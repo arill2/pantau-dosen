@@ -123,3 +123,44 @@ export function ringkasRekap(
     ).length,
   }
 }
+
+/** Bulan (0-11) yang memiliki minimal satu pertemuan bertanggal. */
+export function daftarBulanAktif(list: PenugasanLengkap[]): number[] {
+  const set = new Set<number>()
+  for (const item of list) {
+    for (const p of item.pertemuan) {
+      const b = bulanDariTanggal(p.tanggal)
+      if (b !== null) set.add(b)
+    }
+  }
+  return [...set].sort((a, b) => a - b)
+}
+
+export interface RekapBulan {
+  bulan: number
+  totalHadir: number
+  totalDihitung: number
+  persentase: number | null
+  /** Ada pertemuan bertanggal pada bulan ini. */
+  adaData: boolean
+}
+
+/** Rincian persentase & total untuk tiap bulan pada satu penugasan. */
+export function hitungPerBulan(
+  penugasan: PenugasanLengkap,
+  bulanList: number[],
+  aturan: AturanHitung,
+): RekapBulan[] {
+  return bulanList.map((bulan) => {
+    const r = hitungRekap(penugasan, bulan, aturan)
+    return {
+      bulan,
+      totalHadir: r.totalHadir,
+      totalDihitung: r.totalDihitung,
+      persentase: r.persentase,
+      adaData: penugasan.pertemuan.some(
+        (p) => bulanDariTanggal(p.tanggal) === bulan,
+      ),
+    }
+  })
+}

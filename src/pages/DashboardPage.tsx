@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Field'
 import { StateBlock, TableSkeleton } from '@/components/ui/Feedback'
 import { MiniTrack, WeekStrip } from '@/components/WeekStrip'
+import { RekapBulanan } from '@/components/RekapBulanan'
 import { STATUS_META } from '@/components/StatusPertemuan'
 import { PertemuanDialog } from '@/components/PertemuanDialog'
 import { useToast } from '@/components/ui/Toast'
@@ -22,6 +23,7 @@ import { usePenugasanLengkap } from '@/hooks/useRekap'
 import { usePengaturan } from '@/contexts/SettingsContext'
 import {
   cocokBulan,
+  daftarBulanAktif,
   hitungRekap,
   ringkasRekap,
   TOTAL_MINGGU,
@@ -59,6 +61,11 @@ export function DashboardPage() {
     null,
   )
   const [eksporTerbuka, setEksporTerbuka] = useState(false)
+  const [tampilan, setTampilan] = useState<'pekan' | 'bulan'>('pekan')
+
+  // Mode "Per bulan" menampilkan semua bulan sekaligus, jadi filter bulan
+  // tidak berlaku (dihitung sebagai semua bulan).
+  const bulanEfektif: FilterBulan = tampilan === 'bulan' ? 'semua' : bulan
 
   useEffect(() => {
     if (periodeId || periode.length === 0) return
@@ -68,7 +75,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     setHalaman(1)
-  }, [periodeId, bulan, dosenId, mkId, metode, cari])
+  }, [periodeId, bulan, dosenId, mkId, metode, cari, tampilan])
 
   useEffect(() => {
     if (!eksporTerbuka) return
@@ -88,8 +95,10 @@ export function DashboardPage() {
       if (metode !== 'semua' && p.metode !== metode) return false
       return true
     })
-    return dasar.map((p) => hitungRekap(p, bulan, aturan))
-  }, [rekapQuery.data, periodeId, dosenId, mkId, metode, bulan, aturan])
+    return dasar.map((p) => hitungRekap(p, bulanEfektif, aturan))
+  }, [rekapQuery.data, periodeId, dosenId, mkId, metode, bulanEfektif, aturan])
+
+  const bulanList = useMemo(() => daftarBulanAktif(baris), [baris])
 
   const tersaring = useMemo(() => {
     const q = cari.trim().toLowerCase()
@@ -159,14 +168,28 @@ export function DashboardPage() {
       return
     }
     try {
-      const { eksporExcel, eksporPdf } = await import('@/lib/export')
-      if (jenis === 'excel') {
-        eksporExcel(tersaring, bulan, konteks)
-        tampil('Excel sedang diunduh.', 'sukses')
+      const mod = await import('@/lib/export')
+      if (tampilan === 'bulan') {
+        if (jenis === 'excel') {
+          mod.eksporExcelBulanan(tersaring, bulanList, konteks, aturan)
+        } else {
+          mod.eksporPdfBulanan(
+            tersaring,
+            bulanList,
+            konteks,
+            aturan,
+            ringkasan.rataPersentase,
+          )
+        }
+      } else if (jenis === 'excel') {
+        mod.eksporExcel(tersaring, bulan, konteks)
       } else {
-        eksporPdf(tersaring, bulan, konteks, ringkasan.rataPersentase)
-        tampil('PDF sedang diunduh.', 'sukses')
+        mod.eksporPdf(tersaring, bulan, konteks, ringkasan.rataPersentase)
       }
+      tampil(
+        `${jenis === 'excel' ? 'Excel' : 'PDF'} sedang diunduh.`,
+        'sukses',
+      )
     } catch {
       tampil('Ekspor gagal. Coba lagi.', 'galat')
     }
@@ -181,6 +204,40 @@ export function DashboardPage() {
         aria-label="Filter rekap"
         className="rounded-[10px] border border-line bg-surface p-3 sm:p-4"
       >
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            role="group"
+            aria-label="Tampilan rekap"
+            className="inline-flex w-full rounded-[6px] border border-line-strong bg-surface-2 p-0.5 sm:w-auto"
+          >
+            {(
+              [
+                ['pekan', 'Per pekan'],
+                ['bulan', 'Per bulan'],
+              ] as const
+            ).map(([nilai, label]) => (
+              <button
+                key={nilai}
+                type="button"
+                onClick={() => setTampilan(nilai)}
+                aria-pressed={tampilan === nilai}
+                className={`min-h-11 flex-1 rounded-[4px] px-3 text-[13px] font-semibold transition-colors duration-150 sm:min-h-8 sm:flex-none ${
+                  tampilan === nilai
+                    ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,0.08)]'
+                    : 'text-muted hover:text-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted">
+            {tampilan === 'bulan'
+              ? 'Persentase & total tiap bulan dalam satu tabel.'
+              : 'Status 16 pekan; klik sel untuk mengubah.'}
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-12">
           <div className="col-span-2 lg:col-span-4">
             <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-periode">
@@ -204,6 +261,8 @@ export function DashboardPage() {
             <Select
               id="f-bulan"
               value={bulan === 'semua' ? 'semua' : String(bulan)}
+              disabled={tampilan === 'bulan'}
+              className="disabled:cursor-not-allowed disabled:opacity-55"
               onChange={(e) =>
                 setBulan(e.target.value === 'semua' ? 'semua' : Number(e.target.value))
               }
@@ -333,9 +392,13 @@ export function DashboardPage() {
         <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted">
           <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden="true" />
           <span>
-            {bulan === 'semua'
-              ? 'Menghitung seluruh pekan pada periode terpilih.'
-              : `Hanya pekan bertanggal ${bulanLabel} yang ditampilkan dan dihitung.`}
+            {tampilan === 'bulan'
+              ? bulanList.length > 0
+                ? `Persentase & total per bulan untuk ${bulanList.length} bulan yang memiliki pertemuan.`
+                : 'Belum ada pertemuan bertanggal untuk dihitung per bulan.'
+              : bulan === 'semua'
+                ? 'Menghitung seluruh pekan pada periode terpilih.'
+                : `Hanya pekan bertanggal ${bulanLabel} yang ditampilkan dan dihitung.`}
           </span>
         </p>
       </section>
@@ -381,7 +444,16 @@ export function DashboardPage() {
         />
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-[10px] border border-line bg-surface lg:block">
+          {tampilan === 'bulan' ? (
+            <RekapBulanan
+              baris={tampilBaris}
+              bulanList={bulanList}
+              aturan={aturan}
+              onBukaPekan={() => setTampilan('pekan')}
+            />
+          ) : (
+            <>
+              <div className="hidden overflow-hidden rounded-[10px] border border-line bg-surface lg:block">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-[13px]">
                 <caption className="sr-only">
@@ -449,7 +521,9 @@ export function DashboardPage() {
                 onPilih={(m) => setDialog({ baris: b, minggu: m })}
               />
             ))}
-          </div>
+              </div>
+            </>
+          )}
 
           {totalHalaman > 1 ? (
             <nav aria-label="Navigasi halaman" className="flex items-center justify-between gap-3">
