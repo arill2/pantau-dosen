@@ -22,6 +22,8 @@ const STATUS_LABEL: Record<StatusLaporan, string> = {
   ditolak: 'Ditolak',
 }
 
+const LAPORAN_KOSONG: Laporan[] = []
+
 function StatusPill({ status }: { status: StatusLaporan }) {
   const kelas =
     status === 'terverifikasi'
@@ -64,7 +66,7 @@ export function LaporanPage() {
   const [alasan, setAlasan] = useState('')
   const [galat, setGalat] = useState<string | null>(null)
 
-  const semua = query.data ?? []
+  const semua = query.data ?? LAPORAN_KOSONG
   const tersaring = useMemo(() => {
     const q = cari.trim().toLowerCase()
     return semua.filter((l) => {
@@ -100,7 +102,9 @@ export function LaporanPage() {
       tampil('Laporan diterima dan masuk ke rekap.', 'sukses')
       setDetail(null)
     } catch (err) {
-      setGalat(pesanError(err))
+      const pesan = pesanError(err)
+      setGalat(pesan)
+      tampil(pesan, 'galat')
     }
   }
 
@@ -246,6 +250,7 @@ export function LaporanPage() {
                               <Button
                                 ukuran="sm"
                                 variasi="utama"
+                                disabled={terapkan.isPending}
                                 onClick={() => void terapkanKeRekap(l)}
                                 ikon={<Check className="size-3.5" />}
                               >
@@ -310,7 +315,8 @@ export function LaporanPage() {
                       <Button
                         ukuran="sm"
                         variasi="utama"
-                        onClick={() => void terapkanKeRekap(l)}
+                        disabled={terapkan.isPending}
+                                onClick={() => void terapkanKeRekap(l)}
                         ikon={<Check className="size-3.5" />}
                       >
                         Terima
@@ -351,6 +357,7 @@ export function LaporanPage() {
                   onClick={() => {
                     setGalat(null)
                     setAlasan('')
+                    setDetail(null)
                     setAkanTolak(detail)
                   }}
                   className="text-alfa sm:mr-auto"

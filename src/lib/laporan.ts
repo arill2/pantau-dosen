@@ -13,7 +13,6 @@ function pesan(m: string): string {
   if (l.includes('nama ketua')) return 'Nama ketua kelas wajib diisi.'
   if (l.includes('sudah dilaporkan'))
     return 'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.'
-  if (l.includes('dokumentasi')) return 'Dokumentasi (bukti) wajib diisi.'
   if (l.includes('minggu pertemuan'))
     return 'Minggu pertemuan harus antara 1 sampai 16.'
   if (l.includes('tanggal pembelajaran'))

@@ -375,7 +375,8 @@ returns integer[]
 language sql security definer set search_path = public as $$
   select coalesce(array_agg(l.minggu_ke order by l.minggu_ke), '{}')
   from public.laporan l
-  where l.kelas_id = p_kelas and l.penugasan_id = p_penugasan and l.minggu_ke is not null;
+  where l.kelas_id = p_kelas and l.penugasan_id = p_penugasan and l.minggu_ke is not null
+    and l.status <> 'ditolak';
 $$;
 
 create or replace function public.lapor_kirim_kelas(
@@ -401,17 +402,17 @@ begin
   if p_minggu is null or p_minggu < 1 or p_minggu > 16 then
     raise exception 'Minggu pertemuan harus antara 1 sampai 16'; end if;
   if p_tanggal is null then raise exception 'Tanggal pembelajaran wajib diisi'; end if;
-  if p_dokumentasi is null or length(trim(p_dokumentasi)) = 0 then
-    raise exception 'Dokumentasi wajib diisi sebagai bukti'; end if;
   if exists (select 1 from public.laporan where kelas_id = p_kelas
-    and penugasan_id = p_penugasan and minggu_ke = p_minggu) then
+    and penugasan_id = p_penugasan and minggu_ke = p_minggu
+    and status <> 'ditolak') then
     raise exception 'Pekan ini sudah dilaporkan (pekan %)', p_minggu using errcode = '23505';
   end if;
   insert into public.laporan (kelas_id, penugasan_id, nama_ketua, mata_kuliah, nama_dosen, tipe,
     minggu_ke, tanggal, waktu, dosen_hadir, catatan, dokumentasi_url, status)
   values (p_kelas, p_penugasan, trim(p_nama_ketua), v_mk, v_dosen, v_tipe,
     p_minggu, p_tanggal, p_waktu, p_dosen_hadir,
-    nullif(trim(coalesce(p_catatan, '')), ''), trim(p_dokumentasi), 'baru')
+    nullif(trim(coalesce(p_catatan, '')), ''),
+    nullif(trim(coalesce(p_dokumentasi, '')), ''), 'baru')
   returning id into v_id;
   return v_id;
 end;
@@ -419,7 +420,7 @@ $$;
 
 create unique index if not exists laporan_unik
   on public.laporan (kelas_id, penugasan_id, minggu_ke)
-  where penugasan_id is not null and minggu_ke is not null;
+  where penugasan_id is not null and minggu_ke is not null and status <> 'ditolak';
 
 grant execute on function public.lapor_kelas() to anon, authenticated;
 grant execute on function public.lapor_daftar_kelas(uuid) to anon, authenticated;

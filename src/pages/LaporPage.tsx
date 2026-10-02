@@ -1,6 +1,15 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarClock, CheckCircle2 } from 'lucide-react'
+import {
+  BookOpen,
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  CircleUserRound,
+  Clock,
+  Paperclip,
+  School,
+} from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { InlineError, Spinner } from '@/components/ui/Feedback'
@@ -38,6 +47,33 @@ const KOSONG: Nilai = {
   dokumentasi: '',
 }
 
+function Seksi({
+  ikon,
+  judul,
+  keterangan,
+  children,
+}: {
+  ikon: ReactNode
+  judul: string
+  keterangan?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="border-t border-line px-4 py-5 first:border-t-0 sm:px-5">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="grid size-7 place-items-center rounded-[6px] bg-brand-soft text-brand-strong">
+          {ikon}
+        </span>
+        <h2 className="text-[13px] font-bold text-ink">{judul}</h2>
+        {keterangan ? (
+          <span className="ml-auto text-[11px] text-muted">{keterangan}</span>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export function LaporPage() {
   const [kelas, setKelas] = useState<KelasOpsi[]>([])
   const [memuatKelas, setMemuatKelas] = useState(true)
@@ -55,11 +91,13 @@ export function LaporPage() {
     () => daftar.find((d) => d.penugasan_id === form.penugasanId) ?? null,
     [daftar, form.penugasanId],
   )
+  const namaKelas = kelas.find((k) => k.id === kelasId)?.nama ?? ''
   const pekanSudahDilaporkan =
     form.minggu !== '' && pekanTerisi.includes(Number(form.minggu))
 
   useEffect(() => {
     let aktif = true
+    setGalat(null)
     laporKelas()
       .then((k) => {
         if (aktif) setKelas(k)
@@ -75,13 +113,13 @@ export function LaporPage() {
     }
   }, [])
 
-  // Muat daftar mata kuliah ketika kelas dipilih.
   useEffect(() => {
     if (!kelasId) {
       setDaftar([])
       return
     }
     let aktif = true
+    setGalat(null)
     setMemuatDaftar(true)
     setForm((f) => ({ ...f, penugasanId: '', minggu: '' }))
     laporDaftarKelas(kelasId)
@@ -89,7 +127,8 @@ export function LaporPage() {
         if (aktif) setDaftar(d)
       })
       .catch((err) => {
-        if (aktif) setGalat(err instanceof Error ? err.message : 'Gagal memuat mata kuliah.')
+        if (aktif)
+          setGalat(err instanceof Error ? err.message : 'Gagal memuat mata kuliah.')
       })
       .finally(() => {
         if (aktif) setMemuatDaftar(false)
@@ -99,13 +138,13 @@ export function LaporPage() {
     }
   }, [kelasId])
 
-  // Muat pekan yang sudah dilaporkan untuk penugasan terpilih (cegah ganda).
   useEffect(() => {
     if (!kelasId || !form.penugasanId) {
       setPekanTerisi([])
       return
     }
     let aktif = true
+    setPekanTerisi([])
     laporPekanTerisiKelas(kelasId, form.penugasanId)
       .then((p) => {
         if (aktif) setPekanTerisi(p)
@@ -126,8 +165,6 @@ export function LaporPage() {
     if (!form.minggu) return setGalatForm('Pilih minggu pertemuan.')
     if (!form.tanggal) return setGalatForm('Isi tanggal jadwal pembelajaran.')
     if (!form.hadir) return setGalatForm('Pilih apakah dosen hadir atau tidak.')
-    if (!form.dokumentasi.trim())
-      return setGalatForm('Dokumentasi (bukti) wajib diisi.')
     if (pekanSudahDilaporkan)
       return setGalatForm(
         'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.',
@@ -146,7 +183,6 @@ export function LaporPage() {
         catatan: form.catatan,
         dokumentasi: form.dokumentasi,
       })
-      const namaKelas = kelas.find((k) => k.id === kelasId)?.nama ?? ''
       setSukses(
         `${terpilih?.mata_kuliah ?? 'Laporan'} · Pekan ${form.minggu} · ${namaKelas}`,
       )
@@ -182,16 +218,20 @@ export function LaporPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+      <main className="mx-auto max-w-2xl px-4 py-6 pb-28 sm:px-6 sm:pb-6">
         {sukses ? (
           <div className="rounded-[10px] border border-line bg-surface p-6 text-center">
-            <CheckCircle2 className="mx-auto size-10 text-hadir" aria-hidden="true" />
-            <h1 className="mt-3 text-lg font-extrabold text-ink">Laporan terkirim</h1>
+            <span
+              aria-hidden="true"
+              className="mx-auto grid size-14 place-items-center rounded-full bg-hadir-soft text-hadir"
+            >
+              <CheckCircle2 className="size-7" aria-hidden="true" />
+            </span>
+            <h1 className="mt-4 text-lg font-extrabold text-ink">Laporan terkirim</h1>
             <p className="mt-1 text-[13px] text-muted">
-              Terima kasih. Laporan menunggu <strong>verifikasi pengelola</strong> sebelum
-              masuk ke rekap.
+              Menunggu <strong>verifikasi pengelola</strong> sebelum masuk ke rekap.
             </p>
-            <p className="mt-3 rounded-[6px] bg-surface-2 px-3 py-2 text-[13px] text-ink">
+            <p className="mt-4 rounded-[6px] border border-line bg-surface-2 px-3 py-2.5 text-[13px] text-ink">
               {sukses}
             </p>
             <Button
@@ -208,13 +248,27 @@ export function LaporPage() {
           </div>
         ) : (
           <>
-            <div className="mb-5 rounded-[10px] border border-line bg-surface p-5">
-              <h1 className="text-lg font-extrabold text-ink">
-                Laporkan pelaksanaan pembelajaran
-              </h1>
-              <p className="mt-1 text-[13px] text-muted">
-                Khusus ketua kelas. Pilih kelas, lalu isi sesuai jadwal.
-              </p>
+            <div className="mb-4 overflow-hidden rounded-[10px] border border-line bg-surface">
+              <div className="px-5 py-5">
+                <h1 className="text-xl font-extrabold text-ink sm:text-2xl">
+                  Laporkan pelaksanaan pembelajaran
+                </h1>
+                <p className="mt-1 text-[13px] text-muted">
+                  Khusus ketua kelas. Isi setelah jam pembelajaran sesuai jadwal.
+                </p>
+              </div>
+              {/* Motif jalur pekan */}
+              <div
+                aria-hidden="true"
+                className="flex h-6 items-stretch gap-px border-t border-line bg-surface-2 px-2 py-1.5"
+              >
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`flex-1 rounded-[2px] ${i % 5 === 0 ? 'bg-brand/70' : 'bg-line-strong'}`}
+                  />
+                ))}
+              </div>
             </div>
 
             {galat ? (
@@ -224,211 +278,281 @@ export function LaporPage() {
             ) : null}
 
             <form
+              id="lapor-form"
               onSubmit={kirim}
-              className="flex flex-col gap-4 rounded-[10px] border border-line bg-surface p-5"
+              className="overflow-hidden rounded-[10px] border border-line bg-surface"
             >
-              {galatForm ? <InlineError pesan={galatForm} /> : null}
-
-              <Field label="Kelas">
-                {(p) =>
-                  memuatKelas ? (
-                    <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
-                      <Spinner /> Memuat kelas…
-                    </div>
-                  ) : (
-                    <Select
-                      {...p}
-                      value={kelasId}
-                      onChange={(e) => setKelasId(e.target.value)}
-                    >
-                      <option value="">Pilih kelas</option>
-                      {kelas.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.nama}
-                        </option>
-                      ))}
-                    </Select>
-                  )
-                }
-              </Field>
-
-              <Field label="Nama ketua kelas">
-                {(p) => (
-                  <Input
-                    {...p}
-                    value={form.namaKetua}
-                    onChange={(e) => setForm({ ...form, namaKetua: e.target.value })}
-                    placeholder="Nama lengkap"
-                  />
-                )}
-              </Field>
-
-              <Field label="Mata kuliah">
-                {(p) =>
-                  memuatDaftar ? (
-                    <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
-                      <Spinner /> Memuat mata kuliah…
-                    </div>
-                  ) : (
-                    <Select
-                      {...p}
-                      value={form.penugasanId}
-                      disabled={!kelasId}
-                      className="disabled:cursor-not-allowed disabled:opacity-55"
-                      onChange={(e) =>
-                        setForm({ ...form, penugasanId: e.target.value, minggu: '' })
-                      }
-                    >
-                      <option value="">
-                        {kelasId ? 'Pilih mata kuliah' : 'Pilih kelas dulu'}
-                      </option>
-                      {daftar.map((d) => (
-                        <option key={d.penugasan_id} value={d.penugasan_id}>
-                          {d.mata_kuliah} · {d.nama_dosen} (
-                          {d.metode === 'T' ? 'Teori' : 'Praktik'})
-                        </option>
-                      ))}
-                    </Select>
-                  )
-                }
-              </Field>
-
-              {terpilih ? (
-                <div className="grid grid-cols-2 gap-3 rounded-[6px] bg-surface-2 px-3 py-2.5 text-[13px]">
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted uppercase">Dosen</p>
-                    <p className="text-ink">{terpilih.nama_dosen}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted uppercase">Tipe</p>
-                    <p className="text-ink">{namaMetode(terpilih.metode)}</p>
-                  </div>
+              <Seksi ikon={<School className="size-4" aria-hidden="true" />} judul="Kelas & ketua">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Field label="Kelas">
+                    {(p) =>
+                      memuatKelas ? (
+                        <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
+                          <Spinner /> Memuat kelas…
+                        </div>
+                      ) : (
+                        <Select
+                          {...p}
+                          value={kelasId}
+                          onChange={(e) => setKelasId(e.target.value)}
+                        >
+                          <option value="">Pilih kelas</option>
+                          {kelas.map((k) => (
+                            <option key={k.id} value={k.id}>
+                              {k.nama}
+                            </option>
+                          ))}
+                        </Select>
+                      )
+                    }
+                  </Field>
+                  <Field label="Nama ketua kelas">
+                    {(p) => (
+                      <Input
+                        {...p}
+                        value={form.namaKetua}
+                        onChange={(e) =>
+                          setForm({ ...form, namaKetua: e.target.value })
+                        }
+                        placeholder="Nama lengkap"
+                      />
+                    )}
+                  </Field>
                 </div>
-              ) : null}
+              </Seksi>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <Field label="Minggu pertemuan">
-                  {(p) => (
-                    <Select
-                      {...p}
-                      value={form.minggu}
-                      disabled={!form.penugasanId}
-                      className="disabled:cursor-not-allowed disabled:opacity-55"
-                      onChange={(e) => setForm({ ...form, minggu: e.target.value })}
-                    >
-                      <option value="">Pilih</option>
-                      {MINGGU.map((m) => (
-                        <option key={m} value={m} disabled={pekanTerisi.includes(m)}>
-                          Pekan {m}
-                          {pekanTerisi.includes(m) ? ' · sudah dilaporkan' : ''}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Field>
-                <Field label="Tanggal pembelajaran">
-                  {(p) => (
-                    <Input
-                      {...p}
-                      type="date"
-                      value={form.tanggal}
-                      onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
-                    />
-                  )}
-                </Field>
-                <Field label="Waktu" opsional>
-                  {(p) => (
-                    <Input
-                      {...p}
-                      type="time"
-                      value={form.waktu}
-                      onChange={(e) => setForm({ ...form, waktu: e.target.value })}
-                    />
-                  )}
-                </Field>
-              </div>
-
-              <fieldset>
-                <legend className="mb-2 text-[13px] font-semibold text-ink">
-                  Apakah dosen hadir melaksanakan pembelajaran?
-                </legend>
-                <div className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      ['hadir', 'Dosen hadir', 'bg-hadir-soft text-hadir border-hadir'],
-                      ['tidak', 'Dosen tidak hadir', 'bg-alfa-soft text-alfa border-alfa'],
-                    ] as const
-                  ).map(([nilai, label, kelasAktif]) => {
-                    const aktif = form.hadir === nilai
-                    return (
-                      <label
-                        key={nilai}
-                        className={`flex min-h-12 cursor-pointer items-center justify-center rounded-[6px] border px-3 py-2 text-center text-[13px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${
-                          aktif
-                            ? kelasAktif
-                            : 'border-line-strong bg-surface text-ink hover:bg-surface-2'
-                        }`}
+              <Seksi
+                ikon={<BookOpen className="size-4" aria-hidden="true" />}
+                judul="Mata kuliah & dosen"
+              >
+                <Field label="Mata kuliah">
+                  {(p) =>
+                    memuatDaftar ? (
+                      <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
+                        <Spinner /> Memuat mata kuliah…
+                      </div>
+                    ) : (
+                      <Select
+                        {...p}
+                        value={form.penugasanId}
+                        disabled={!kelasId}
+                        className="disabled:cursor-not-allowed disabled:opacity-55"
+                        onChange={(e) =>
+                          setForm({ ...form, penugasanId: e.target.value, minggu: '' })
+                        }
                       >
-                        <input
-                          type="radio"
-                          name="hadir"
-                          value={nilai}
-                          checked={aktif}
-                          onChange={() => setForm({ ...form, hadir: nilai })}
-                          className="sr-only"
-                        />
-                        {label}
-                      </label>
+                        <option value="">
+                          {kelasId ? 'Pilih mata kuliah' : 'Pilih kelas dulu'}
+                        </option>
+                        {daftar.map((d) => (
+                          <option key={d.penugasan_id} value={d.penugasan_id}>
+                            {d.mata_kuliah} · {d.nama_dosen} (
+                            {d.metode === 'T' ? 'Teori' : 'Praktik'})
+                          </option>
+                        ))}
+                      </Select>
                     )
-                  })}
-                </div>
-              </fieldset>
+                  }
+                </Field>
 
-              <Field label="Catatan" opsional>
-                {(p) => (
-                  <Textarea
-                    {...p}
-                    value={form.catatan}
-                    onChange={(e) => setForm({ ...form, catatan: e.target.value })}
-                    placeholder="Materi, kendala, atau keterangan lain"
-                  />
-                )}
-              </Field>
+                {terpilih ? (
+                  <div className="mt-3 grid grid-cols-1 gap-3 rounded-[6px] border border-line bg-surface-2 px-3 py-3 sm:grid-cols-2">
+                    <div className="flex items-start gap-2">
+                      <CircleUserRound
+                        className="mt-0.5 size-4 shrink-0 text-muted"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="text-[11px] font-semibold text-muted">Dosen</p>
+                        <p className="text-[13px] font-semibold text-ink">
+                          {terpilih.nama_dosen}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <BookOpen
+                        className="mt-0.5 size-4 shrink-0 text-muted"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="text-[11px] font-semibold text-muted">Tipe</p>
+                        <p className="text-[13px] font-semibold text-ink">
+                          {namaMetode(terpilih.metode)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </Seksi>
 
-              <Field
-                label="Dokumentasi (bukti)"
-                petunjuk="Wajib. Tempel tautan foto/dokumen pembelajaran (mis. Google Drive)."
+              <Seksi
+                ikon={<CalendarDays className="size-4" aria-hidden="true" />}
+                judul="Jadwal pertemuan"
+                keterangan="Sesuai jadwal"
               >
-                {(p) => (
-                  <Input
-                    {...p}
-                    type="url"
-                    value={form.dokumentasi}
-                    onChange={(e) => setForm({ ...form, dokumentasi: e.target.value })}
-                    placeholder="https://..."
-                  />
-                )}
-              </Field>
-
-              {pekanSudahDilaporkan ? (
-                <div className="flex items-start gap-2 rounded-[6px] border border-alfa bg-alfa-soft px-3 py-2 text-[13px]">
-                  <span aria-hidden="true" className="text-alfa">⚠</span>
-                  <p className="text-ink">
-                    Pekan <strong>{form.minggu}</strong> untuk mata kuliah ini sudah
-                    dilaporkan. Pilih pekan lain supaya data tidak ganda.
-                  </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  <Field label="Pekan">
+                    {(p) => (
+                      <Select
+                        {...p}
+                        value={form.minggu}
+                        disabled={!form.penugasanId}
+                        className="disabled:cursor-not-allowed disabled:opacity-55"
+                        onChange={(e) => setForm({ ...form, minggu: e.target.value })}
+                      >
+                        <option value="">Pilih</option>
+                        {MINGGU.map((m) => (
+                          <option key={m} value={m} disabled={pekanTerisi.includes(m)}>
+                            Pekan {m}
+                            {pekanTerisi.includes(m) ? ' · sudah dilaporkan' : ''}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  </Field>
+                  <Field label="Tanggal">
+                    {(p) => (
+                      <Input
+                        {...p}
+                        type="date"
+                        value={form.tanggal}
+                        onChange={(e) => setForm({ ...form, tanggal: e.target.value })}
+                      />
+                    )}
+                  </Field>
+                  <Field label="Waktu" opsional>
+                    {(p) => (
+                      <div className="relative">
+                        <Clock
+                          className="pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted"
+                          aria-hidden="true"
+                        />
+                        <Input
+                          {...p}
+                          type="time"
+                          value={form.waktu}
+                          onChange={(e) => setForm({ ...form, waktu: e.target.value })}
+                        />
+                      </div>
+                    )}
+                  </Field>
                 </div>
-              ) : null}
+              </Seksi>
 
-              <Button
-                type="submit"
-                variasi="utama"
-                memuat={mengirim}
-                disabled={pekanSudahDilaporkan}
-                className="mt-1 h-11 w-full"
+              <Seksi
+                ikon={<CircleUserRound className="size-4" aria-hidden="true" />}
+                judul="Kehadiran dosen"
               >
-                Kirim laporan
-              </Button>
+                <fieldset>
+                  <legend className="sr-only">
+                    Apakah dosen hadir melaksanakan pembelajaran?
+                  </legend>
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    {(
+                      [
+                        ['hadir', 'Dosen hadir', '✓', 'border-hadir bg-hadir-soft text-hadir'],
+                        ['tidak', 'Dosen tidak hadir', '✕', 'border-alfa bg-alfa-soft text-alfa'],
+                      ] as const
+                    ).map(([nilai, label, tanda, aktifKelas]) => {
+                      const aktif = form.hadir === nilai
+                      return (
+                        <label
+                          key={nilai}
+                          className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-[8px] border px-4 py-3 text-[14px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${
+                            aktif
+                              ? aktifKelas
+                              : 'border-line-strong bg-surface text-ink hover:bg-surface-2'
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="hadir"
+                            value={nilai}
+                            checked={aktif}
+                            onChange={() => setForm({ ...form, hadir: nilai })}
+                            className="sr-only"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`grid size-8 shrink-0 place-items-center rounded-full text-base font-bold ${
+                              aktif ? 'bg-surface/70' : 'bg-surface-2'
+                            }`}
+                          >
+                            {tanda}
+                          </span>
+                          {label}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </fieldset>
+              </Seksi>
+
+              <Seksi
+                ikon={<Paperclip className="size-4" aria-hidden="true" />}
+                judul="Catatan & bukti"
+                keterangan="Opsional"
+              >
+                <div className="flex flex-col gap-4">
+                  <Field label="Catatan" opsional>
+                    {(p) => (
+                      <Textarea
+                        {...p}
+                        value={form.catatan}
+                        onChange={(e) => setForm({ ...form, catatan: e.target.value })}
+                        placeholder="Materi, kendala, atau keterangan lain"
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label="Dokumentasi"
+                    opsional
+                    petunjuk="Tempel tautan foto/dokumen pembelajaran bila ada."
+                  >
+                    {(p) => (
+                      <Input
+                        {...p}
+                        type="url"
+                        value={form.dokumentasi}
+                        onChange={(e) =>
+                          setForm({ ...form, dokumentasi: e.target.value })
+                        }
+                        placeholder="https://..."
+                      />
+                    )}
+                  </Field>
+                </div>
+              </Seksi>
+
+              <div className="border-t border-line px-4 py-4 sm:px-5">
+                {galatForm ? (
+                  <div className="mb-3">
+                    <InlineError pesan={galatForm} />
+                  </div>
+                ) : null}
+                {pekanSudahDilaporkan ? (
+                  <div className="mb-3 flex items-start gap-2 rounded-[6px] border border-alfa bg-alfa-soft px-3 py-2 text-[13px]">
+                    <span aria-hidden="true" className="text-alfa">
+                      ⚠
+                    </span>
+                    <p className="text-ink">
+                      Pekan <strong>{form.minggu}</strong> untuk mata kuliah ini sudah
+                      dilaporkan. Pilih pekan lain supaya data tidak ganda.
+                    </p>
+                  </div>
+                ) : null}
+                <div className="hidden sm:block">
+                  <Button
+                    type="submit"
+                    variasi="utama"
+                    memuat={mengirim}
+                    disabled={pekanSudahDilaporkan}
+                    className="h-11 w-full"
+                  >
+                    Kirim laporan
+                  </Button>
+                </div>
+              </div>
             </form>
           </>
         )}
@@ -438,6 +562,22 @@ export function LaporPage() {
           kendala.
         </p>
       </main>
+
+      {/* Aksi melekat di bawah (mobile) */}
+      {!sukses ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper/95 p-3 backdrop-blur-sm sm:hidden">
+          <Button
+            type="submit"
+            form="lapor-form"
+            variasi="utama"
+            memuat={mengirim}
+            disabled={pekanSudahDilaporkan}
+            className="h-12 w-full"
+          >
+            Kirim laporan
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }
