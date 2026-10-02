@@ -20,6 +20,7 @@ interface NilaiForm {
   semester: string
   angkatan: string
   paralel: string
+  kode_akses: string
   keterangan: string
   aktif: boolean
 }
@@ -30,6 +31,7 @@ const FORM_KOSONG: NilaiForm = {
   semester: '',
   angkatan: '',
   paralel: '',
+  kode_akses: '',
   keterangan: '',
   aktif: true,
 }
@@ -69,6 +71,17 @@ export function KelasPage() {
       ),
     },
     {
+      judul: 'Kode akses',
+      render: (k) =>
+        k.kode_akses ? (
+          <code className="rounded bg-surface-2 px-1.5 py-0.5 text-[12px] text-ink">
+            {k.kode_akses}
+          </code>
+        ) : (
+          <span className="text-muted">–</span>
+        ),
+    },
+    {
       judul: 'Keterangan',
       render: (k) =>
         k.keterangan ? (
@@ -94,6 +107,7 @@ export function KelasPage() {
                 semester: k.semester ?? '',
                 angkatan: k.angkatan ?? '',
                 paralel: k.paralel ?? '',
+                kode_akses: k.kode_akses ?? '',
                 keterangan: k.keterangan ?? '',
                 aktif: k.aktif,
               })
@@ -131,6 +145,7 @@ export function KelasPage() {
         semester: form.semester.trim() || null,
         angkatan: form.angkatan.trim() || null,
         paralel: form.paralel.trim().toUpperCase() || null,
+        kode_akses: form.kode_akses.trim().toLowerCase() || null,
         keterangan: form.keterangan.trim() || null,
         aktif: form.aktif,
       })
@@ -180,11 +195,11 @@ export function KelasPage() {
         kolom={kolom}
         barisKunci={(k) => k.id}
         saring={(k) =>
-          `${k.nama} ${k.keterangan ?? ''} ${k.program ?? ''} ${k.semester ?? ''} ${k.angkatan ?? ''} ${k.paralel ?? ''}`
+          `${k.nama} ${k.keterangan ?? ''} ${k.program ?? ''} ${k.semester ?? ''} ${k.angkatan ?? ''} ${k.paralel ?? ''} ${k.kode_akses ?? ''}`
         }
         kataKunci={cari}
         judulKosong="Belum ada kelas"
-        pesanKosong="Tambahkan kelas (mis. Nautika 1A) agar bisa ditugaskan bersama dosen dan mata kuliah."
+        pesanKosong="Tambahkan kelas agar bisa ditugaskan bersama dosen dan mata kuliah."
         aksiKosong={
           <Button
             variasi="utama"
@@ -222,7 +237,7 @@ export function KelasPage() {
                   value={form.nama}
                   autoFocus
                   onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                  placeholder="cth. D4 III-A (Ang.46)"
+                  placeholder="cth. Kelas 1A"
                 />
               )}
             </Field>
@@ -268,13 +283,29 @@ export function KelasPage() {
                 )}
               </Field>
             </div>
+            <Field
+              label="Kode akses ketua kelas"
+              opsional
+              petunjuk="Dibagikan ke ketua kelas untuk mengisi laporan. Huruf kecil, tanpa spasi."
+            >
+              {(p) => (
+                <Input
+                  {...p}
+                  value={form.kode_akses}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  onChange={(e) => setForm({ ...form, kode_akses: e.target.value })}
+                  placeholder="mis. kelas-1a"
+                />
+              )}
+            </Field>
             <Field label="Keterangan" opsional>
               {(p) => (
                 <Input
                   {...p}
                   value={form.keterangan}
                   onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
-                  placeholder="cth. Prodi Nautika"
+                  placeholder="keterangan tambahan"
                 />
               )}
             </Field>

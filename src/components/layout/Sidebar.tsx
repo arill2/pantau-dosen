@@ -3,12 +3,14 @@ import {
   CalendarRange,
   ClipboardList,
   DoorOpen,
+  Inbox,
   ListChecks,
   Settings,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { APP_NAME, APP_SUBTITLE } from '@/lib/config'
 
 interface Item {
   ke: string
@@ -25,7 +27,10 @@ interface Grup {
 export const NAVIGASI: Grup[] = [
   {
     judul: 'Monitor',
-    item: [{ ke: '/', label: 'Dashboard Rekap', ikon: ListChecks, akhir: true }],
+    item: [
+      { ke: '/', label: 'Dashboard Rekap', ikon: ListChecks, akhir: true },
+      { ke: '/laporan', label: 'Laporan Ketua Kelas', ikon: Inbox },
+    ],
   },
   {
     judul: 'Master data',
@@ -105,8 +110,8 @@ export function BrandMark() {
         </svg>
       </span>
       <div className="leading-tight">
-        <p className="text-sm font-extrabold tracking-tight text-ink">Pantau Dosen</p>
-        <p className="text-[11px] text-muted">Rekap pembelajaran taruna</p>
+        <p className="text-sm font-extrabold tracking-tight text-ink">{APP_NAME}</p>
+        <p className="text-[11px] text-muted">{APP_SUBTITLE}</p>
       </div>
     </div>
   )

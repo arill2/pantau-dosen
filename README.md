@@ -18,6 +18,7 @@ desain pada `DESIGN.md`.
 - Penanda visual untuk persentase di bawah ambang batas.
 - Ekspor Excel (.xlsx) dan PDF (landscape) sesuai filter aktif.
 - Audit log perubahan pertemuan (siapa, kapan, nilai lama dan baru).
+- **Laporan Ketua Kelas**: ketua kelas melaporkan kehadiran dosen lewat halaman publik `/lapor` memakai kode akses kelas; masuk ke log admin (siapa, kelas mana, kapan) dengan verifikasi dan tombol "Terapkan ke rekap". Duplikat pekan dicegah.
 - Tema terang dan gelap, tata letak responsif (desktop, tablet, dan ponsel).
 
 ## Teknologi
@@ -43,13 +44,17 @@ Bila `.env` belum diisi, aplikasi menampilkan halaman panduan setup, bukan error
    Untuk mencoba dengan data contoh, jalankan juga `supabase/seed.example.sql`
    (hapus sebelum dipakai dengan data nyata).
    *Sudah pernah memasang versi lama?* Jalankan berurutan migrasi di
-   `supabase/migrations/`: `0002_kelas.sql`, lalu `0003_kode_sks_kelas.sql`.
+   `supabase/migrations/`: `0002_kelas.sql`, `0003_kode_sks_kelas.sql`,
+   `0004_laporan.sql`, lalu `0005_laporan_validasi.sql`.
 3. Buka **Project Settings > API**, salin **Project URL** dan **anon public key**
    ke `.env`:
    ```
    VITE_SUPABASE_URL=https://xxxx.supabase.co
    VITE_SUPABASE_ANON_KEY=eyJ...
    VITE_AUTH_EMAIL_DOMAIN=pantau-dosen.local
+   VITE_APP_NAME=Pantau Dosen
+   VITE_APP_SUBTITLE=Rekap pembelajaran taruna
+   VITE_INSTANSI=Politeknik Ilmu Pelayaran Makassar
    ```
 4. Buat admin pertama di **Authentication > Users > Add user**, email
    `admin@pantau-dosen.local` dan kata sandi pilihan Anda.

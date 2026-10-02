@@ -45,8 +45,42 @@ export interface Kelas {
   semester: string | null
   angkatan: string | null
   paralel: string | null
+  kode_akses: string | null
   aktif: boolean
   created_at?: string
+}
+
+export type StatusLaporan = 'baru' | 'terverifikasi' | 'ditolak'
+
+export interface Laporan {
+  id: string
+  kelas_id: string
+  penugasan_id: string | null
+  nama_ketua: string
+  mata_kuliah: string | null
+  nama_dosen: string | null
+  tipe: Metode | null
+  minggu_ke: number | null
+  tanggal: string | null
+  waktu: string | null
+  dosen_hadir: boolean
+  catatan: string | null
+  dokumentasi_url: string | null
+  status: StatusLaporan
+  dibuat_pada: string
+  kelas: Pick<
+    Kelas,
+    'id' | 'nama' | 'program' | 'semester' | 'paralel' | 'angkatan'
+  > | null
+}
+
+export interface DaftarLapor {
+  penugasan_id: string
+  mata_kuliah: string
+  kode_mk: string
+  nama_dosen: string
+  metode: Metode
+  kelas_nama: string
 }
 
 export interface Penugasan {

@@ -7,6 +7,7 @@ import { BrandMark, Navigasi } from './Sidebar'
 
 const JUDUL: Record<string, { judul: string; keterangan: string }> = {
   '/': { judul: 'Dashboard Rekap', keterangan: 'Kehadiran dosen per pekan' },
+  '/laporan': { judul: 'Laporan Ketua Kelas', keterangan: 'Pelaporan pelaksanaan pembelajaran' },
   '/dosen': { judul: 'Dosen', keterangan: 'Master data dosen' },
   '/mata-kuliah': { judul: 'Mata kuliah', keterangan: 'Master mata kuliah' },
   '/kelas': { judul: 'Kelas', keterangan: 'Master kelas' },
