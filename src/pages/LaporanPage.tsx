@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Check, ExternalLink, Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Field'
+import { Select, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { StateBlock, TableSkeleton, InlineError } from '@/components/ui/Feedback'
 import { Toolbar } from '@/components/Toolbar'
@@ -10,7 +10,7 @@ import { useKelas } from '@/hooks/useMasterData'
 import {
   useLaporan,
   useTerapkanLaporan,
-  useUbahStatusLaporan,
+  useTolakLaporan,
 } from '@/lib/laporan'
 import { formatTanggal, namaMetode } from '@/lib/format'
 import { pesanError } from '@/lib/api'
@@ -52,14 +52,16 @@ function HadirPill({ hadir }: { hadir: boolean }) {
 export function LaporanPage() {
   const query = useLaporan()
   const { data: kelas = [] } = useKelas()
-  const ubahStatus = useUbahStatusLaporan()
   const terapkan = useTerapkanLaporan()
+  const tolak = useTolakLaporan()
   const { tampil } = useToast()
 
   const [kelasId, setKelasId] = useState('semua')
-  const [status, setStatus] = useState<'semua' | StatusLaporan>('semua')
+  const [status, setStatus] = useState<'semua' | StatusLaporan>('baru')
   const [cari, setCari] = useState('')
   const [detail, setDetail] = useState<Laporan | null>(null)
+  const [akanTolak, setAkanTolak] = useState<Laporan | null>(null)
+  const [alasan, setAlasan] = useState('')
   const [galat, setGalat] = useState<string | null>(null)
 
   const semua = query.data ?? []
@@ -95,18 +97,21 @@ export function LaporanPage() {
     setGalat(null)
     try {
       await terapkan.mutateAsync(l)
-      tampil('Laporan diterapkan ke rekap pertemuan.', 'sukses')
+      tampil('Laporan diterima dan masuk ke rekap.', 'sukses')
       setDetail(null)
     } catch (err) {
       setGalat(pesanError(err))
     }
   }
 
-  async function ubah(l: Laporan, s: StatusLaporan) {
+  async function konfirmasiTolak() {
+    if (!akanTolak) return
     setGalat(null)
     try {
-      await ubahStatus.mutateAsync({ id: l.id, status: s })
-      tampil(`Status laporan: ${STATUS_LABEL[s].toLowerCase()}.`, 'sukses')
+      await tolak.mutateAsync({ id: akanTolak.id, alasan })
+      tampil('Laporan ditolak.', 'sukses')
+      setAkanTolak(null)
+      setAlasan('')
       setDetail(null)
     } catch (err) {
       setGalat(pesanError(err))
@@ -155,6 +160,16 @@ export function LaporanPage() {
         </div>
       </Toolbar>
 
+      {ringkas.baru > 0 ? (
+        <div className="flex items-start gap-2.5 rounded-[10px] border border-izin bg-izin-soft px-4 py-3 text-[13px]">
+          <span aria-hidden="true" className="text-izin">⚠</span>
+          <p className="text-ink">
+            <strong>{ringkas.baru} laporan</strong> menunggu verifikasi. Data ini{' '}
+            <strong>belum masuk rekap</strong> sampai Anda menerimanya.
+          </p>
+        </div>
+      ) : null}
+
       {query.isLoading ? (
         <TableSkeleton />
       ) : query.isError ? (
@@ -167,7 +182,7 @@ export function LaporanPage() {
       ) : semua.length === 0 ? (
         <StateBlock
           judul="Belum ada laporan"
-          pesan="Laporan dari ketua kelas akan muncul di sini. Bagikan kode akses kelas dari halaman Kelas."
+          pesan="Laporan dari ketua kelas akan muncul di sini untuk diverifikasi."
         />
       ) : tersaring.length === 0 ? (
         <StateBlock judul="Tidak ada hasil" pesan="Tidak ada laporan yang cocok dengan filter." />
@@ -227,14 +242,29 @@ export function LaporanPage() {
                             Detail
                           </Button>
                           {l.status === 'baru' ? (
-                            <Button
-                              ukuran="sm"
-                              variasi="sekunder"
-                              onClick={() => void terapkanKeRekap(l)}
-                              ikon={<Check className="size-3.5" />}
-                            >
-                              Terapkan
-                            </Button>
+                            <>
+                              <Button
+                                ukuran="sm"
+                                variasi="utama"
+                                onClick={() => void terapkanKeRekap(l)}
+                                ikon={<Check className="size-3.5" />}
+                              >
+                                Terima
+                              </Button>
+                              <Button
+                                ukuran="sm"
+                                variasi="halus"
+                                onClick={() => {
+                                  setGalat(null)
+                                  setAlasan('')
+                                  setAkanTolak(l)
+                                }}
+                                className="text-alfa hover:bg-alfa-soft"
+                                ikon={<X className="size-3.5" />}
+                              >
+                                Tolak
+                              </Button>
+                            </>
                           ) : null}
                         </div>
                       </td>
@@ -276,14 +306,29 @@ export function LaporanPage() {
                     Detail
                   </Button>
                   {l.status === 'baru' ? (
-                    <Button
-                      ukuran="sm"
-                      variasi="utama"
-                      onClick={() => void terapkanKeRekap(l)}
-                      ikon={<Check className="size-3.5" />}
-                    >
-                      Terapkan ke rekap
-                    </Button>
+                    <>
+                      <Button
+                        ukuran="sm"
+                        variasi="utama"
+                        onClick={() => void terapkanKeRekap(l)}
+                        ikon={<Check className="size-3.5" />}
+                      >
+                        Terima
+                      </Button>
+                      <Button
+                        ukuran="sm"
+                        variasi="halus"
+                        onClick={() => {
+                          setGalat(null)
+                          setAlasan('')
+                          setAkanTolak(l)
+                        }}
+                        className="text-alfa hover:bg-alfa-soft"
+                        ikon={<X className="size-3.5" />}
+                      >
+                        Tolak
+                      </Button>
+                    </>
                   ) : null}
                 </div>
               </article>
@@ -300,22 +345,30 @@ export function LaporanPage() {
         footer={
           detail ? (
             <>
-              <Button
-                variasi="halus"
-                onClick={() => void ubah(detail, 'ditolak')}
-                className="text-alfa sm:mr-auto"
-                ikon={<X className="size-4" />}
-              >
-                Tolak
-              </Button>
+              {detail.status === 'baru' ? (
+                <Button
+                  variasi="halus"
+                  onClick={() => {
+                    setGalat(null)
+                    setAlasan('')
+                    setAkanTolak(detail)
+                  }}
+                  className="text-alfa sm:mr-auto"
+                  ikon={<X className="size-4" />}
+                >
+                  Tolak
+                </Button>
+              ) : (
+                <span className="sm:mr-auto" />
+              )}
               {detail.status === 'baru' && detail.penugasan_id ? (
                 <Button
-                  variasi="sekunder"
+                  variasi="utama"
                   memuat={terapkan.isPending}
                   onClick={() => void terapkanKeRekap(detail)}
                   ikon={<Check className="size-4" />}
                 >
-                  Terapkan ke rekap
+                  Terima &amp; masukkan rekap
                 </Button>
               ) : null}
             </>
@@ -339,6 +392,15 @@ export function LaporanPage() {
               nilai={detail.dosen_hadir ? 'Dosen hadir' : 'Dosen tidak hadir'}
             />
             <Baris label="Status laporan" nilai={STATUS_LABEL[detail.status]} />
+            {detail.diverifikasi_pada ? (
+              <Baris
+                label="Diverifikasi"
+                nilai={new Date(detail.diverifikasi_pada).toLocaleString('id-ID')}
+              />
+            ) : null}
+            {detail.catatan_verifikasi ? (
+              <Baris label="Alasan penolakan" nilai={detail.catatan_verifikasi} />
+            ) : null}
             {detail.catatan ? <Baris label="Catatan" nilai={detail.catatan} /> : null}
             {detail.dokumentasi_url ? (
               <div>
@@ -356,12 +418,54 @@ export function LaporanPage() {
               </div>
             ) : null}
             <p className="rounded-[6px] bg-surface-2 px-3 py-2 text-[12px] text-muted">
-              Menekan "Terapkan ke rekap" akan menandai pekan {detail.minggu_ke ?? '–'} sebagai{' '}
-              {detail.dosen_hadir ? 'Hadir' : 'Tidak hadir'} pada data dosen, dan laporan menjadi
-              Terverifikasi.
+              "Terima" menandai pekan {detail.minggu_ke ?? '–'} sebagai{' '}
+              {detail.dosen_hadir ? 'Hadir' : 'Tidak hadir'} pada data dosen dan mengubah
+              status laporan menjadi Terverifikasi. "Tolak" tidak mengubah rekap.
             </p>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        terbuka={akanTolak !== null}
+        judul="Tolak laporan"
+        deskripsi={
+          akanTolak
+            ? `${akanTolak.nama_ketua} · ${akanTolak.kelas?.nama ?? ''}`
+            : undefined
+        }
+        onTutup={() => setAkanTolak(null)}
+        footer={
+          <>
+            <Button variasi="halus" onClick={() => setAkanTolak(null)} className="sm:mr-auto">
+              Batal
+            </Button>
+            <Button
+              variasi="bahaya"
+              memuat={tolak.isPending}
+              onClick={() => void konfirmasiTolak()}
+            >
+              Tolak laporan
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3 text-[13px]">
+          {galat ? <InlineError pesan={galat} /> : null}
+          <p className="text-ink">
+            Laporan ini tidak akan masuk rekap. Tuliskan alasan agar ketua kelas tahu
+            penyebabnya (mis. bukti tidak jelas, bukan jadwal, data ganda).
+          </p>
+          <label className="text-[13px] font-semibold text-ink" htmlFor="alasan-tolak">
+            Alasan penolakan
+          </label>
+          <Textarea
+            id="alasan-tolak"
+            value={alasan}
+            onChange={(e) => setAlasan(e.target.value)}
+            placeholder="cth. Dokumentasi tidak sesuai / bukan pekan pada jadwal."
+          />
+        </div>
       </Modal>
     </div>
   )

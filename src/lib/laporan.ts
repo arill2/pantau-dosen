@@ -2,22 +2,49 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { buka, pastikanSiap } from './api'
 import { KUNCI_QUERY } from './queryClient'
 import { supabase } from './supabase'
-import type { DaftarLapor, Laporan, StatusLaporan } from './types'
+import type { DaftarLapor, KelasOpsi, Laporan, StatusLaporan } from './types'
 
-/** Publik: daftar penugasan untuk satu kelas berdasarkan kode akses. */
-export async function laporDaftar(kode: string): Promise<DaftarLapor[]> {
-  const { data, error } = await supabase.rpc('lapor_daftar', { p_kode: kode })
+function pesan(m: string): string {
+  const l = m.toLowerCase()
+  if (l.includes('kelas tidak ditemukan'))
+    return 'Kelas tidak ditemukan. Hubungi pengelola.'
+  if (l.includes('tidak cocok'))
+    return 'Mata kuliah tidak cocok dengan kelas ini.'
+  if (l.includes('nama ketua')) return 'Nama ketua kelas wajib diisi.'
+  if (l.includes('sudah dilaporkan'))
+    return 'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.'
+  if (l.includes('dokumentasi')) return 'Dokumentasi (bukti) wajib diisi.'
+  if (l.includes('minggu pertemuan'))
+    return 'Minggu pertemuan harus antara 1 sampai 16.'
+  if (l.includes('tanggal pembelajaran'))
+    return 'Tanggal pembelajaran wajib diisi.'
+  if (l.includes('duplicate key')) return 'Data ini sudah ada, tidak boleh ganda.'
+  return m
+}
+
+// ---------------------------------------------------------------------------
+// Publik (taruna / ketua kelas) - tanpa akun
+// ---------------------------------------------------------------------------
+export async function laporKelas(): Promise<KelasOpsi[]> {
+  const { data, error } = await supabase.rpc('lapor_kelas')
+  if (error) throw new Error(pesan(error.message))
+  return (data ?? []) as KelasOpsi[]
+}
+
+export async function laporDaftarKelas(kelasId: string): Promise<DaftarLapor[]> {
+  const { data, error } = await supabase.rpc('lapor_daftar_kelas', {
+    p_kelas: kelasId,
+  })
   if (error) throw new Error(pesan(error.message))
   return (data ?? []) as DaftarLapor[]
 }
 
-/** Publik: pekan yang sudah dilaporkan untuk satu penugasan (cegah duplikat). */
-export async function laporPekanTerisi(
-  kode: string,
+export async function laporPekanTerisiKelas(
+  kelasId: string,
   penugasanId: string,
 ): Promise<number[]> {
-  const { data, error } = await supabase.rpc('lapor_pekan_terisi', {
-    p_kode: kode,
+  const { data, error } = await supabase.rpc('lapor_pekan_terisi_kelas', {
+    p_kelas: kelasId,
     p_penugasan: penugasanId,
   })
   if (error) throw new Error(pesan(error.message))
@@ -25,7 +52,7 @@ export async function laporPekanTerisi(
 }
 
 export interface InputLapor {
-  kode: string
+  kelasId: string
   namaKetua: string
   penugasanId: string
   minggu: number
@@ -36,10 +63,9 @@ export interface InputLapor {
   dokumentasi: string
 }
 
-/** Publik: kirim laporan ketua kelas. */
-export async function laporKirim(input: InputLapor): Promise<void> {
-  const { error } = await supabase.rpc('lapor_kirim', {
-    p_kode: input.kode,
+export async function laporKirimKelas(input: InputLapor): Promise<void> {
+  const { error } = await supabase.rpc('lapor_kirim_kelas', {
+    p_kelas: input.kelasId,
     p_nama_ketua: input.namaKetua,
     p_penugasan: input.penugasanId,
     p_minggu: input.minggu,
@@ -52,29 +78,13 @@ export async function laporKirim(input: InputLapor): Promise<void> {
   if (error) throw new Error(pesan(error.message))
 }
 
-function pesan(m: string): string {
-  const l = m.toLowerCase()
-  if (l.includes('kode kelas tidak valid'))
-    return 'Kode kelas tidak ditemukan. Periksa kembali kode dari admin.'
-  if (l.includes('tidak cocok'))
-    return 'Mata kuliah tidak cocok dengan kelas ini.'
-  if (l.includes('nama ketua')) return 'Nama ketua kelas wajib diisi.'
-  if (l.includes('sudah dilaporkan'))
-    return 'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.'
-  if (l.includes('minggu pertemuan'))
-    return 'Minggu pertemuan harus antara 1 sampai 16.'
-  if (l.includes('tanggal pembelajaran'))
-    return 'Tanggal pembelajaran wajib diisi.'
-  if (l.includes('duplicate key')) return 'Data ini sudah ada, tidak boleh ganda.'
-  return m
-}
-
 // ---------------------------------------------------------------------------
-// Admin
+// Admin: log & verifikasi
 // ---------------------------------------------------------------------------
 const SELECT_LAPORAN = `
   id, kelas_id, penugasan_id, nama_ketua, mata_kuliah, nama_dosen, tipe,
-  minggu_ke, tanggal, waktu, dosen_hadir, catatan, dokumentasi_url, status, dibuat_pada,
+  minggu_ke, tanggal, waktu, dosen_hadir, catatan, dokumentasi_url, status,
+  catatan_verifikasi, diverifikasi_oleh, diverifikasi_pada, dibuat_pada,
   kelas:kelas_id ( id, nama, program, semester, paralel, angkatan )
 `
 
@@ -100,14 +110,18 @@ export function useLaporan() {
   })
 }
 
-export function useUbahStatusLaporan() {
+export function useTolakLaporan() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { id: string; status: StatusLaporan }) => {
+    mutationFn: async (input: { id: string; alasan: string }) => {
       pastikanSiap()
       const hasil = await supabase
         .from('laporan')
-        .update({ status: input.status })
+        .update({
+          status: 'ditolak',
+          catatan_verifikasi: input.alasan.trim() || null,
+          diverifikasi_pada: new Date().toISOString(),
+        })
         .eq('id', input.id)
       if (hasil.error) buka(hasil)
     },
@@ -116,7 +130,7 @@ export function useUbahStatusLaporan() {
   })
 }
 
-/** Terapkan laporan ke rekap pertemuan (status hadir/tidak hadir). */
+/** Admin menerima laporan: tulis ke rekap pertemuan + tandai terverifikasi. */
 export function useTerapkanLaporan() {
   const qc = useQueryClient()
   return useMutation({
@@ -124,6 +138,9 @@ export function useTerapkanLaporan() {
       pastikanSiap()
       if (!laporan.penugasan_id || laporan.minggu_ke === null)
         throw new Error('Laporan ini tidak memiliki penugasan/pekan.')
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       const hasil = await supabase.from('pertemuan').upsert(
         {
           penugasan_id: laporan.penugasan_id,
@@ -138,7 +155,11 @@ export function useTerapkanLaporan() {
       if (hasil.error) buka(hasil)
       const upd = await supabase
         .from('laporan')
-        .update({ status: 'terverifikasi' })
+        .update({
+          status: 'terverifikasi',
+          diverifikasi_oleh: user?.id ?? null,
+          diverifikasi_pada: new Date().toISOString(),
+        })
         .eq('id', laporan.id)
       if (upd.error) buka(upd)
     },
@@ -148,3 +169,5 @@ export function useTerapkanLaporan() {
     },
   })
 }
+
+export type { StatusLaporan }

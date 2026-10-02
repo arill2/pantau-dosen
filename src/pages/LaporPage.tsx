@@ -1,13 +1,18 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, CalendarClock, CheckCircle2, KeyRound } from 'lucide-react'
+import { CalendarClock, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
-import { InlineError } from '@/components/ui/Feedback'
-import { laporDaftar, laporKirim, laporPekanTerisi } from '@/lib/laporan'
+import { InlineError, Spinner } from '@/components/ui/Feedback'
+import {
+  laporDaftarKelas,
+  laporKelas,
+  laporKirimKelas,
+  laporPekanTerisiKelas,
+} from '@/lib/laporan'
 import { INSTANSI } from '@/lib/config'
-import { formatTanggal, namaMetode } from '@/lib/format'
-import type { DaftarLapor } from '@/lib/types'
+import { namaMetode } from '@/lib/format'
+import type { DaftarLapor, KelasOpsi } from '@/lib/types'
 
 const MINGGU = Array.from({ length: 16 }, (_, i) => i + 1)
 
@@ -34,29 +39,76 @@ const KOSONG: Nilai = {
 }
 
 export function LaporPage() {
-  const [kode, setKode] = useState('')
-  const [daftar, setDaftar] = useState<DaftarLapor[] | null>(null)
-  const [kelasNama, setKelasNama] = useState('')
-  const [memuat, setMemuat] = useState(false)
-  const [galat, setGalat] = useState<string | null>(null)
+  const [kelas, setKelas] = useState<KelasOpsi[]>([])
+  const [memuatKelas, setMemuatKelas] = useState(true)
+  const [kelasId, setKelasId] = useState('')
+  const [daftar, setDaftar] = useState<DaftarLapor[]>([])
+  const [memuatDaftar, setMemuatDaftar] = useState(false)
+  const [pekanTerisi, setPekanTerisi] = useState<number[]>([])
   const [form, setForm] = useState<Nilai>(KOSONG)
+  const [galat, setGalat] = useState<string | null>(null)
   const [galatForm, setGalatForm] = useState<string | null>(null)
   const [mengirim, setMengirim] = useState(false)
   const [sukses, setSukses] = useState<string | null>(null)
-  const [pekanTerisi, setPekanTerisi] = useState<number[]>([])
 
-  const terpilih = daftar?.find((d) => d.penugasan_id === form.penugasanId) ?? null
+  const terpilih = useMemo(
+    () => daftar.find((d) => d.penugasan_id === form.penugasanId) ?? null,
+    [daftar, form.penugasanId],
+  )
+  const pekanSudahDilaporkan =
+    form.minggu !== '' && pekanTerisi.includes(Number(form.minggu))
 
-  // Ketika mata kuliah dipilih, ambil pekan yang sudah dilaporkan (cegah ganda).
   useEffect(() => {
-    if (!daftar || !form.penugasanId) {
+    let aktif = true
+    laporKelas()
+      .then((k) => {
+        if (aktif) setKelas(k)
+      })
+      .catch((err) => {
+        if (aktif) setGalat(err instanceof Error ? err.message : 'Gagal memuat kelas.')
+      })
+      .finally(() => {
+        if (aktif) setMemuatKelas(false)
+      })
+    return () => {
+      aktif = false
+    }
+  }, [])
+
+  // Muat daftar mata kuliah ketika kelas dipilih.
+  useEffect(() => {
+    if (!kelasId) {
+      setDaftar([])
+      return
+    }
+    let aktif = true
+    setMemuatDaftar(true)
+    setForm((f) => ({ ...f, penugasanId: '', minggu: '' }))
+    laporDaftarKelas(kelasId)
+      .then((d) => {
+        if (aktif) setDaftar(d)
+      })
+      .catch((err) => {
+        if (aktif) setGalat(err instanceof Error ? err.message : 'Gagal memuat mata kuliah.')
+      })
+      .finally(() => {
+        if (aktif) setMemuatDaftar(false)
+      })
+    return () => {
+      aktif = false
+    }
+  }, [kelasId])
+
+  // Muat pekan yang sudah dilaporkan untuk penugasan terpilih (cegah ganda).
+  useEffect(() => {
+    if (!kelasId || !form.penugasanId) {
       setPekanTerisi([])
       return
     }
     let aktif = true
-    laporPekanTerisi(kode.trim(), form.penugasanId)
-      .then((pekan) => {
-        if (aktif) setPekanTerisi(pekan)
+    laporPekanTerisiKelas(kelasId, form.penugasanId)
+      .then((p) => {
+        if (aktif) setPekanTerisi(p)
       })
       .catch(() => {
         if (aktif) setPekanTerisi([])
@@ -64,48 +116,27 @@ export function LaporPage() {
     return () => {
       aktif = false
     }
-  }, [daftar, form.penugasanId, kode])
-
-  const pekanSudahDilaporkan =
-    form.minggu !== '' && pekanTerisi.includes(Number(form.minggu))
-
-  async function bukaKelas(e: FormEvent) {
-    e.preventDefault()
-    if (!kode.trim()) return setGalat('Masukkan kode kelas dari pengelola.')
-    setGalat(null)
-    setMemuat(true)
-    try {
-      const hasil = await laporDaftar(kode.trim())
-      if (hasil.length === 0) {
-        setGalat('Kode kelas tidak ditemukan atau belum punya mata kuliah.')
-        return
-      }
-      setDaftar(hasil)
-      setKelasNama(hasil[0].kelas_nama)
-      setForm({ ...KOSONG })
-    } catch (err) {
-      setGalat(err instanceof Error ? err.message : 'Gagal memuat kelas.')
-    } finally {
-      setMemuat(false)
-    }
-  }
+  }, [kelasId, form.penugasanId])
 
   async function kirim(e: FormEvent) {
     e.preventDefault()
+    if (!kelasId) return setGalatForm('Pilih kelas.')
     if (!form.namaKetua.trim()) return setGalatForm('Nama ketua kelas wajib diisi.')
     if (!form.penugasanId) return setGalatForm('Pilih mata kuliah.')
     if (!form.minggu) return setGalatForm('Pilih minggu pertemuan.')
     if (!form.tanggal) return setGalatForm('Isi tanggal jadwal pembelajaran.')
     if (!form.hadir) return setGalatForm('Pilih apakah dosen hadir atau tidak.')
+    if (!form.dokumentasi.trim())
+      return setGalatForm('Dokumentasi (bukti) wajib diisi.')
     if (pekanSudahDilaporkan)
       return setGalatForm(
-        'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain agar data tidak ganda.',
+        'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.',
       )
     setGalatForm(null)
     setMengirim(true)
     try {
-      await laporKirim({
-        kode: kode.trim(),
+      await laporKirimKelas({
+        kelasId,
         namaKetua: form.namaKetua.trim(),
         penugasanId: form.penugasanId,
         minggu: Number(form.minggu),
@@ -115,10 +146,9 @@ export function LaporPage() {
         catatan: form.catatan,
         dokumentasi: form.dokumentasi,
       })
+      const namaKelas = kelas.find((k) => k.id === kelasId)?.nama ?? ''
       setSukses(
-        `${terpilih?.mata_kuliah ?? 'Laporan'} · Pekan ${form.minggu} (${formatTanggal(
-          form.tanggal,
-        )})`,
+        `${terpilih?.mata_kuliah ?? 'Laporan'} · Pekan ${form.minggu} · ${namaKelas}`,
       )
     } catch (err) {
       setGalatForm(err instanceof Error ? err.message : 'Gagal mengirim laporan.')
@@ -158,7 +188,8 @@ export function LaporPage() {
             <CheckCircle2 className="mx-auto size-10 text-hadir" aria-hidden="true" />
             <h1 className="mt-3 text-lg font-extrabold text-ink">Laporan terkirim</h1>
             <p className="mt-1 text-[13px] text-muted">
-              Terima kasih. Laporan Anda sudah masuk ke pengelola.
+              Terima kasih. Laporan menunggu <strong>verifikasi pengelola</strong> sebelum
+              masuk ke rekap.
             </p>
             <p className="mt-3 rounded-[6px] bg-surface-2 px-3 py-2 text-[13px] text-ink">
               {sukses}
@@ -169,19 +200,20 @@ export function LaporPage() {
               onClick={() => {
                 setSukses(null)
                 setForm(KOSONG)
+                setPekanTerisi([])
               }}
             >
               Isi laporan lagi
             </Button>
           </div>
-        ) : !daftar ? (
+        ) : (
           <>
             <div className="mb-5 rounded-[10px] border border-line bg-surface p-5">
               <h1 className="text-lg font-extrabold text-ink">
                 Laporkan pelaksanaan pembelajaran
               </h1>
               <p className="mt-1 text-[13px] text-muted">
-                Khusus ketua kelas. Isi setelah jam pembelajaran sesuai jadwal.
+                Khusus ketua kelas. Pilih kelas, lalu isi sesuai jadwal.
               </p>
             </div>
 
@@ -191,60 +223,34 @@ export function LaporPage() {
               </div>
             ) : null}
 
-            <form onSubmit={bukaKelas} className="rounded-[10px] border border-line bg-surface p-5">
-              <Field label="Kode kelas" petunjuk="Minta kode ke pengelola kelas Anda.">
-                {(p) => (
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <KeyRound
-                        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
-                        aria-hidden="true"
-                      />
-                      <Input
-                        {...p}
-                        value={kode}
-                        autoCapitalize="none"
-                        spellCheck={false}
-                        onChange={(e) => setKode(e.target.value)}
-                        placeholder="kode kelas"
-                        className="pl-9"
-                      />
-                    </div>
-                    <Button type="submit" variasi="utama" memuat={memuat} className="shrink-0">
-                      Buka
-                    </Button>
-                  </div>
-                )}
-              </Field>
-            </form>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => {
-                setDaftar(null)
-                setForm(KOSONG)
-                setGalatForm(null)
-              }}
-              className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-muted hover:text-ink"
-            >
-              <ArrowLeft className="size-4" aria-hidden="true" />
-              Ganti kelas
-            </button>
-
-            <div className="mb-4 rounded-[10px] border border-line bg-surface px-4 py-3">
-              <p className="text-[11px] font-semibold tracking-wide text-muted uppercase">
-                Kelas
-              </p>
-              <p className="text-sm font-bold text-ink">{kelasNama}</p>
-            </div>
-
             <form
               onSubmit={kirim}
               className="flex flex-col gap-4 rounded-[10px] border border-line bg-surface p-5"
             >
               {galatForm ? <InlineError pesan={galatForm} /> : null}
+
+              <Field label="Kelas">
+                {(p) =>
+                  memuatKelas ? (
+                    <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
+                      <Spinner /> Memuat kelas…
+                    </div>
+                  ) : (
+                    <Select
+                      {...p}
+                      value={kelasId}
+                      onChange={(e) => setKelasId(e.target.value)}
+                    >
+                      <option value="">Pilih kelas</option>
+                      {kelas.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.nama}
+                        </option>
+                      ))}
+                    </Select>
+                  )
+                }
+              </Field>
 
               <Field label="Nama ketua kelas">
                 {(p) => (
@@ -258,22 +264,33 @@ export function LaporPage() {
               </Field>
 
               <Field label="Mata kuliah">
-                {(p) => (
-                  <Select
-                    {...p}
-                    value={form.penugasanId}
-                    onChange={(e) =>
-                      setForm({ ...form, penugasanId: e.target.value, minggu: '' })
-                    }
-                  >
-                    <option value="">Pilih mata kuliah</option>
-                    {daftar.map((d) => (
-                      <option key={d.penugasan_id} value={d.penugasan_id}>
-                        {d.mata_kuliah} · {d.nama_dosen} ({d.metode === 'T' ? 'Teori' : 'Praktik'})
+                {(p) =>
+                  memuatDaftar ? (
+                    <div className="flex min-h-11 items-center gap-2 text-[13px] text-muted">
+                      <Spinner /> Memuat mata kuliah…
+                    </div>
+                  ) : (
+                    <Select
+                      {...p}
+                      value={form.penugasanId}
+                      disabled={!kelasId}
+                      className="disabled:cursor-not-allowed disabled:opacity-55"
+                      onChange={(e) =>
+                        setForm({ ...form, penugasanId: e.target.value, minggu: '' })
+                      }
+                    >
+                      <option value="">
+                        {kelasId ? 'Pilih mata kuliah' : 'Pilih kelas dulu'}
                       </option>
-                    ))}
-                  </Select>
-                )}
+                      {daftar.map((d) => (
+                        <option key={d.penugasan_id} value={d.penugasan_id}>
+                          {d.mata_kuliah} · {d.nama_dosen} (
+                          {d.metode === 'T' ? 'Teori' : 'Praktik'})
+                        </option>
+                      ))}
+                    </Select>
+                  )
+                }
               </Field>
 
               {terpilih ? (
@@ -295,6 +312,8 @@ export function LaporPage() {
                     <Select
                       {...p}
                       value={form.minggu}
+                      disabled={!form.penugasanId}
+                      className="disabled:cursor-not-allowed disabled:opacity-55"
                       onChange={(e) => setForm({ ...form, minggu: e.target.value })}
                     >
                       <option value="">Pilih</option>
@@ -377,9 +396,8 @@ export function LaporPage() {
               </Field>
 
               <Field
-                label="Tautan dokumentasi"
-                opsional
-                petunjuk="Tempel tautan foto/dokumen pembelajaran (mis. Google Drive)."
+                label="Dokumentasi (bukti)"
+                petunjuk="Wajib. Tempel tautan foto/dokumen pembelajaran (mis. Google Drive)."
               >
                 {(p) => (
                   <Input
@@ -416,7 +434,8 @@ export function LaporPage() {
         )}
 
         <p className="mt-6 text-center text-xs text-muted">
-          Laporan ini masuk ke rekap pengelola. Hubungi pengelola bila ada kendala.
+          Laporan diverifikasi pengelola sebelum masuk rekap. Hubungi pengelola bila ada
+          kendala.
         </p>
       </main>
     </div>

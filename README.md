@@ -45,7 +45,8 @@ Bila `.env` belum diisi, aplikasi menampilkan halaman panduan setup, bukan error
    (hapus sebelum dipakai dengan data nyata).
    *Sudah pernah memasang versi lama?* Jalankan berurutan migrasi di
    `supabase/migrations/`: `0002_kelas.sql`, `0003_kode_sks_kelas.sql`,
-   `0004_laporan.sql`, lalu `0005_laporan_validasi.sql`.
+   `0004_laporan.sql`, `0005_laporan_validasi.sql`, `0006_lapor_pilih_kelas.sql`,
+   lalu `0007_verifikasi.sql`.
 3. Buka **Project Settings > API**, salin **Project URL** dan **anon public key**
    ke `.env`:
    ```

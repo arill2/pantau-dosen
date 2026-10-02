@@ -67,6 +67,9 @@ export interface Laporan {
   catatan: string | null
   dokumentasi_url: string | null
   status: StatusLaporan
+  catatan_verifikasi: string | null
+  diverifikasi_oleh: string | null
+  diverifikasi_pada: string | null
   dibuat_pada: string
   kelas: Pick<
     Kelas,
@@ -81,6 +84,15 @@ export interface DaftarLapor {
   nama_dosen: string
   metode: Metode
   kelas_nama: string
+}
+
+export interface KelasOpsi {
+  id: string
+  nama: string
+  program: string | null
+  semester: string | null
+  angkatan: string | null
+  paralel: string | null
 }
 
 export interface Penugasan {
