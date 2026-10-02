@@ -21,7 +21,8 @@ interface NilaiForm {
   id?: string
   kode: string
   nama: string
-  sks: string
+  sks_t: string
+  sks_p: string
   metode_default: Metode
   aktif: boolean
 }
@@ -29,7 +30,8 @@ interface NilaiForm {
 const FORM_KOSONG: NilaiForm = {
   kode: '',
   nama: '',
-  sks: '2',
+  sks_t: '1',
+  sks_p: '1',
   metode_default: 'T',
   aktif: true,
 }
@@ -60,7 +62,14 @@ export function MataKuliahPage() {
     },
     {
       judul: 'SKS',
-      render: (m) => <span className="tnum text-ink">{m.sks}</span>,
+      render: (m) => (
+        <span className="tnum text-ink">
+          {m.sks}
+          <span className="ml-1 text-[11px] text-muted">
+            (T{m.sks_t}/P{m.sks_p})
+          </span>
+        </span>
+      ),
     },
     {
       judul: 'Metode bawaan',
@@ -84,7 +93,8 @@ export function MataKuliahPage() {
                 id: m.id,
                 kode: m.kode,
                 nama: m.nama,
-                sks: String(m.sks),
+                sks_t: String(m.sks_t),
+                sks_p: String(m.sks_p),
                 metode_default: m.metode_default,
                 aktif: m.aktif,
               })
@@ -114,9 +124,15 @@ export function MataKuliahPage() {
     if (!form) return
     if (!form.kode.trim()) return setGalatForm('Kode mata kuliah wajib diisi.')
     if (!form.nama.trim()) return setGalatForm('Nama mata kuliah wajib diisi.')
-    const sks = Number(form.sks)
-    if (!Number.isInteger(sks) || sks < 1 || sks > 8)
-      return setGalatForm('SKS harus berupa angka 1 sampai 8.')
+    const sks_t = Number(form.sks_t)
+    const sks_p = Number(form.sks_p)
+    if (!Number.isInteger(sks_t) || sks_t < 0 || sks_t > 8)
+      return setGalatForm('SKS Teori harus angka 0 sampai 8.')
+    if (!Number.isInteger(sks_p) || sks_p < 0 || sks_p > 8)
+      return setGalatForm('SKS Praktik harus angka 0 sampai 8.')
+    if (sks_t + sks_p < 1)
+      return setGalatForm('Total SKS minimal 1 (Teori + Praktik).')
+    const sks = sks_t + sks_p
 
     setGalatForm(null)
     try {
@@ -125,6 +141,8 @@ export function MataKuliahPage() {
         kode: form.kode.trim().toUpperCase(),
         nama: form.nama.trim(),
         sks,
+        sks_t,
+        sks_p,
         metode_default: form.metode_default,
         aktif: form.aktif,
       })
@@ -230,16 +248,28 @@ export function MataKuliahPage() {
                 )}
               </Field>
             </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Field label="SKS" petunjuk="1 sampai 8.">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="SKS Teori" petunjuk="0 sampai 8.">
                 {(p) => (
                   <Input
                     {...p}
                     type="number"
-                    min={1}
+                    min={0}
                     max={8}
-                    value={form.sks}
-                    onChange={(e) => setForm({ ...form, sks: e.target.value })}
+                    value={form.sks_t}
+                    onChange={(e) => setForm({ ...form, sks_t: e.target.value })}
+                  />
+                )}
+              </Field>
+              <Field label="SKS Praktik" petunjuk="0 sampai 8.">
+                {(p) => (
+                  <Input
+                    {...p}
+                    type="number"
+                    min={0}
+                    max={8}
+                    value={form.sks_p}
+                    onChange={(e) => setForm({ ...form, sks_p: e.target.value })}
                   />
                 )}
               </Field>

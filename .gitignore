@@ -31,3 +31,6 @@ dist-ssr
 # Vercel
 .vercel
 .env*
+
+# Data mentah (berisi nama asli, jangan di-commit)
+data_csv/

@@ -96,7 +96,7 @@ export function PertemuanDialog({ terbuka, baris, minggu, onTutup }: Props) {
               return (
                 <label
                   key={s}
-                  className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[6px] border px-3 py-2 text-[13px] font-semibold transition-colors duration-150 ${
+                  className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[6px] border px-3 py-2 text-[13px] font-semibold transition-colors duration-150 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[var(--focus)] ${
                     aktif
                       ? 'border-brand bg-brand-soft text-brand-strong'
                       : 'border-line-strong bg-surface text-ink hover:bg-surface-2'

@@ -19,10 +19,21 @@ function useDaftar<T>(tabel: Tabel, urut: string) {
     enabled: true,
     queryFn: async (): Promise<T[]> => {
       pastikanSiap()
-      const hasil = await supabase.from(tabel).select('*').order(urut, {
-        ascending: true,
-      })
-      return buka(hasil) as T[]
+      // Ambil bertahap (batas PostgREST 1000 baris per permintaan).
+      const UKURAN = 1000
+      const semua: T[] = []
+      for (let dari = 0; ; dari += UKURAN) {
+        const hasil = await supabase
+          .from(tabel)
+          .select('*')
+          .order(urut, { ascending: true })
+          .order('id', { ascending: true })
+          .range(dari, dari + UKURAN - 1)
+        const data = buka(hasil) as T[]
+        semua.push(...data)
+        if (data.length < UKURAN) break
+      }
+      return semua
     },
   })
 }

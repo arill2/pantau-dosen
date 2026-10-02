@@ -20,11 +20,12 @@ import type { Dosen } from '@/lib/types'
 interface NilaiForm {
   id?: string
   nama: string
+  kode: string
   nidn: string
   aktif: boolean
 }
 
-const FORM_KOSONG: NilaiForm = { nama: '', nidn: '', aktif: true }
+const FORM_KOSONG: NilaiForm = { nama: '', kode: '', nidn: '', aktif: true }
 
 export function DosenPage() {
   const query = useDosen()
@@ -43,6 +44,15 @@ export function DosenPage() {
       judul: 'Nama dosen',
       utama: true,
       render: (d) => <span className="font-semibold text-ink">{d.nama}</span>,
+    },
+    {
+      judul: 'Kode',
+      render: (d) =>
+        d.kode ? (
+          <span className="tnum font-semibold text-ink">{d.kode}</span>
+        ) : (
+          <span className="text-muted">–</span>
+        ),
     },
     {
       judul: 'NIDN / NIP',
@@ -65,7 +75,7 @@ export function DosenPage() {
           <Button
             ukuran="sm"
             variasi="halus"
-            onClick={() => setForm({ id: d.id, nama: d.nama, nidn: d.nidn ?? '', aktif: d.aktif })}
+            onClick={() => setForm({ id: d.id, nama: d.nama, kode: d.kode ?? '', nidn: d.nidn ?? '', aktif: d.aktif })}
             ikon={<Pencil className="size-3.5" />}
           >
             Ubah
@@ -98,6 +108,7 @@ export function DosenPage() {
       await simpan.mutateAsync({
         id: form.id,
         nama: form.nama.trim(),
+        kode: form.kode.trim().toUpperCase() || null,
         nidn: form.nidn.trim() || null,
         aktif: form.aktif,
       })
@@ -146,7 +157,7 @@ export function DosenPage() {
         query={query}
         kolom={kolom}
         barisKunci={(d) => d.id}
-        saring={(d) => `${d.nama} ${d.nidn ?? ''}`}
+        saring={(d) => `${d.nama} ${d.nidn ?? ''} ${d.kode ?? ''}`}
         kataKunci={cari}
         judulKosong="Belum ada dosen"
         pesanKosong="Tambahkan dosen terlebih dahulu agar bisa ditugaskan pada mata kuliah."
@@ -191,17 +202,29 @@ export function DosenPage() {
                 />
               )}
             </Field>
-            <Field label="NIDN / NIP" opsional>
-              {(p) => (
-                <Input
-                  {...p}
-                  value={form.nidn}
-                  inputMode="numeric"
-                  onChange={(e) => setForm({ ...form, nidn: e.target.value })}
-                  placeholder="cth. 0012345678"
-                />
-              )}
-            </Field>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Kode" opsional petunjuk="Singkatan unik, mis. RDS.">
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.kode}
+                    onChange={(e) => setForm({ ...form, kode: e.target.value })}
+                    placeholder="cth. RDS"
+                  />
+                )}
+              </Field>
+              <Field label="NIDN / NIP" opsional>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.nidn}
+                    inputMode="numeric"
+                    onChange={(e) => setForm({ ...form, nidn: e.target.value })}
+                    placeholder="cth. 0012345678"
+                  />
+                )}
+              </Field>
+            </div>
             <label className="flex min-h-11 items-center gap-2.5 text-[13px] font-medium text-ink">
               <input
                 type="checkbox"

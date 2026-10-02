@@ -10,7 +10,7 @@ desain pada `DESIGN.md`.
 ## Fitur
 
 - Autentikasi admin (email/kata sandi Supabase) dengan proteksi seluruh halaman.
-- Master data: Dosen, Mata Kuliah, Kelas, Periode, dan Penugasan (dosen + mata kuliah + kelas + metode + periode).
+- Master data: Dosen (dengan kode), Mata Kuliah (SKS Teori/Praktik), Kelas (program, semester, angkatan, paralel), Periode, dan Penugasan (dosen + mata kuliah + kelas + metode + periode).
 - Input pertemuan 1 sampai 16 per penugasan: status, tanggal pelaksanaan, catatan.
 - Tabel rekap dengan kolom 16 pekan, persentase, dan total kehadiran yang dihitung otomatis.
 - Tampilan **Per bulan**: persentase & total kehadiran tiap bulan sekaligus.
@@ -42,8 +42,8 @@ Bila `.env` belum diisi, aplikasi menampilkan halaman panduan setup, bukan error
    Ini membuat tabel, RLS, trigger, dan audit log.
    Untuk mencoba dengan data contoh, jalankan juga `supabase/seed.example.sql`
    (hapus sebelum dipakai dengan data nyata).
-   *Sudah pernah memasang versi lama?* Jalankan `supabase/migrations/0002_kelas.sql`
-   sekali untuk menambahkan master Kelas.
+   *Sudah pernah memasang versi lama?* Jalankan berurutan migrasi di
+   `supabase/migrations/`: `0002_kelas.sql`, lalu `0003_kode_sks_kelas.sql`.
 3. Buka **Project Settings > API**, salin **Project URL** dan **anon public key**
    ke `.env`:
    ```

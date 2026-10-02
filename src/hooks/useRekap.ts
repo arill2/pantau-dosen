@@ -24,12 +24,20 @@ export function usePenugasanLengkap() {
     queryKey: KUNCI_QUERY.rekap,
     queryFn: async (): Promise<PenugasanLengkap[]> => {
       pastikanSiap()
-      const hasil = await supabase
-        .from('penugasan')
-        .select(SELECT_PENUGASAN)
-        .order('created_at', { ascending: false })
-      const data = buka(hasil) as unknown as PenugasanLengkap[]
-      return data.map((p) => ({
+      // PostgREST membatasi 1000 baris per permintaan; ambil bertahap agar lengkap.
+      const UKURAN = 1000
+      const semua: PenugasanLengkap[] = []
+      for (let dari = 0; ; dari += UKURAN) {
+        const hasil = await supabase
+          .from('penugasan')
+          .select(SELECT_PENUGASAN)
+          .order('id', { ascending: true })
+          .range(dari, dari + UKURAN - 1)
+        const data = buka(hasil) as unknown as PenugasanLengkap[]
+        semua.push(...data)
+        if (data.length < UKURAN) break
+      }
+      return semua.map((p) => ({
         ...p,
         pertemuan: [...(p.pertemuan ?? [])].sort(
           (a, b) => a.minggu_ke - b.minggu_ke,

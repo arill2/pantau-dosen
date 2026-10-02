@@ -16,11 +16,23 @@ import type { Kelas } from '@/lib/types'
 interface NilaiForm {
   id?: string
   nama: string
+  program: string
+  semester: string
+  angkatan: string
+  paralel: string
   keterangan: string
   aktif: boolean
 }
 
-const FORM_KOSONG: NilaiForm = { nama: '', keterangan: '', aktif: true }
+const FORM_KOSONG: NilaiForm = {
+  nama: '',
+  program: '',
+  semester: '',
+  angkatan: '',
+  paralel: '',
+  keterangan: '',
+  aktif: true,
+}
 
 export function KelasPage() {
   const query = useKelas()
@@ -39,6 +51,22 @@ export function KelasPage() {
       judul: 'Nama kelas',
       utama: true,
       render: (k) => <span className="font-semibold text-ink">{k.nama}</span>,
+    },
+    {
+      judul: 'Program / Semester',
+      render: (k) => (
+        <span className="text-ink">
+          {[k.program, k.semester].filter(Boolean).join(' · ') || '–'}
+        </span>
+      ),
+    },
+    {
+      judul: 'Angkatan / Paralel',
+      render: (k) => (
+        <span className="tnum text-ink">
+          {[k.angkatan, k.paralel].filter(Boolean).join(' / ') || '–'}
+        </span>
+      ),
     },
     {
       judul: 'Keterangan',
@@ -62,6 +90,10 @@ export function KelasPage() {
               setForm({
                 id: k.id,
                 nama: k.nama,
+                program: k.program ?? '',
+                semester: k.semester ?? '',
+                angkatan: k.angkatan ?? '',
+                paralel: k.paralel ?? '',
                 keterangan: k.keterangan ?? '',
                 aktif: k.aktif,
               })
@@ -95,6 +127,10 @@ export function KelasPage() {
       await simpan.mutateAsync({
         id: form.id,
         nama: form.nama.trim(),
+        program: form.program.trim() || null,
+        semester: form.semester.trim() || null,
+        angkatan: form.angkatan.trim() || null,
+        paralel: form.paralel.trim().toUpperCase() || null,
         keterangan: form.keterangan.trim() || null,
         aktif: form.aktif,
       })
@@ -143,7 +179,9 @@ export function KelasPage() {
         query={query}
         kolom={kolom}
         barisKunci={(k) => k.id}
-        saring={(k) => `${k.nama} ${k.keterangan ?? ''}`}
+        saring={(k) =>
+          `${k.nama} ${k.keterangan ?? ''} ${k.program ?? ''} ${k.semester ?? ''} ${k.angkatan ?? ''} ${k.paralel ?? ''}`
+        }
         kataKunci={cari}
         judulKosong="Belum ada kelas"
         pesanKosong="Tambahkan kelas (mis. Nautika 1A) agar bisa ditugaskan bersama dosen dan mata kuliah."
@@ -184,17 +222,59 @@ export function KelasPage() {
                   value={form.nama}
                   autoFocus
                   onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                  placeholder="cth. Nautika 1A"
+                  placeholder="cth. D4 III-A (Ang.46)"
                 />
               )}
             </Field>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Field label="Program" opsional>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.program}
+                    onChange={(e) => setForm({ ...form, program: e.target.value })}
+                    placeholder="D4 / DP-III"
+                  />
+                )}
+              </Field>
+              <Field label="Semester" opsional>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.semester}
+                    onChange={(e) => setForm({ ...form, semester: e.target.value })}
+                    placeholder="I / III / VII"
+                  />
+                )}
+              </Field>
+              <Field label="Angkatan" opsional>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.angkatan}
+                    onChange={(e) => setForm({ ...form, angkatan: e.target.value })}
+                    placeholder="46 / 43/44"
+                  />
+                )}
+              </Field>
+              <Field label="Paralel" opsional>
+                {(p) => (
+                  <Input
+                    {...p}
+                    value={form.paralel}
+                    onChange={(e) => setForm({ ...form, paralel: e.target.value })}
+                    placeholder="A"
+                  />
+                )}
+              </Field>
+            </div>
             <Field label="Keterangan" opsional>
               {(p) => (
                 <Input
                   {...p}
                   value={form.keterangan}
                   onChange={(e) => setForm({ ...form, keterangan: e.target.value })}
-                  placeholder="cth. Angkatan 2026, Prodi Nautika"
+                  placeholder="cth. Prodi Nautika"
                 />
               )}
             </Field>

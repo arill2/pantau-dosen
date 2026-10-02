@@ -11,6 +11,7 @@ export interface Dosen {
   id: string
   nama: string
   nidn: string | null
+  kode: string | null
   aktif: boolean
   created_at?: string
 }
@@ -20,6 +21,8 @@ export interface MataKuliah {
   kode: string
   nama: string
   sks: number
+  sks_t: number
+  sks_p: number
   metode_default: Metode
   aktif: boolean
   created_at?: string
@@ -38,6 +41,10 @@ export interface Kelas {
   id: string
   nama: string
   keterangan: string | null
+  program: string | null
+  semester: string | null
+  angkatan: string | null
+  paralel: string | null
   aktif: boolean
   created_at?: string
 }

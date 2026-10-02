@@ -15,20 +15,27 @@
 create table if not exists public.dosen (
   id uuid primary key default gen_random_uuid(),
   nama text not null check (length(trim(nama)) > 0),
+  kode text,
   nidn text,
   aktif boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists dosen_kode_unik on public.dosen (kode);
 
 create table if not exists public.mata_kuliah (
   id uuid primary key default gen_random_uuid(),
   kode text not null check (length(trim(kode)) > 0),
   nama text not null check (length(trim(nama)) > 0),
   sks integer not null default 2 check (sks between 1 and 8),
+  sks_t integer not null default 0,
+  sks_p integer not null default 0,
   metode_default text not null default 'T' check (metode_default in ('T', 'P')),
   aktif boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists mata_kuliah_kode_unik on public.mata_kuliah (kode);
 
 create table if not exists public.periode (
   id uuid primary key default gen_random_uuid(),
@@ -52,9 +59,16 @@ create table if not exists public.kelas (
   id uuid primary key default gen_random_uuid(),
   nama text not null check (length(trim(nama)) > 0),
   keterangan text,
+  program text,
+  semester text,
+  angkatan text,
+  paralel text,
   aktif boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+create unique index if not exists kelas_kunci_unik
+  on public.kelas (program, semester, angkatan, paralel);
 
 create table if not exists public.penugasan (
   id uuid primary key default gen_random_uuid(),
