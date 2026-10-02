@@ -31,6 +31,9 @@ export function RekapBulanan({ baris, bulanList, aturan, onBukaPekan }: Props) {
                 <th scope="col" className="min-w-52 px-4 py-3 font-semibold">
                   Mata kuliah
                 </th>
+                <th scope="col" className="min-w-28 px-4 py-3 font-semibold">
+                  Kelas
+                </th>
                 <th scope="col" className="w-14 px-2 py-3 text-center font-semibold">
                   T/P
                 </th>
@@ -71,6 +74,11 @@ export function RekapBulanan({ baris, bulanList, aturan, onBukaPekan }: Props) {
                       </span>
                       <span className="text-[11px] text-muted">
                         {item.mata_kuliah?.kode ?? ''}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="block max-w-28 truncate text-ink">
+                        {item.kelas?.nama ?? '–'}
                       </span>
                     </td>
                     <td className="px-2 py-2.5 text-center">
@@ -138,6 +146,9 @@ export function RekapBulanan({ baris, bulanList, aturan, onBukaPekan }: Props) {
                   </h3>
                   <p className="truncate text-[13px] text-muted">
                     {item.mata_kuliah?.kode} · {item.mata_kuliah?.nama}
+                  </p>
+                  <p className="text-[12px] text-muted">
+                    Kelas <span className="font-semibold text-ink">{item.kelas?.nama ?? '–'}</span>
                   </p>
                 </div>
                 <span className="grid size-6 shrink-0 place-items-center rounded-[4px] bg-brand-soft text-[11px] font-bold text-brand-strong">

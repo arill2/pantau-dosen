@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { DosenPage } from '@/pages/DosenPage'
+import { KelasPage } from '@/pages/KelasPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { MataKuliahPage } from '@/pages/MataKuliahPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -20,6 +21,7 @@ export function App() {
         <Route index element={<DashboardPage />} />
         <Route path="/dosen" element={<DosenPage />} />
         <Route path="/mata-kuliah" element={<MataKuliahPage />} />
+        <Route path="/kelas" element={<KelasPage />} />
         <Route path="/periode" element={<PeriodePage />} />
         <Route path="/penugasan" element={<PenugasanPage />} />
         <Route path="/pengaturan" element={<PengaturanPage />} />

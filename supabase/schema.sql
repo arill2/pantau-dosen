@@ -48,14 +48,23 @@ create unique index if not exists periode_satu_aktif
 -- ---------------------------------------------------------------------------
 -- Penugasan & pertemuan
 -- ---------------------------------------------------------------------------
+create table if not exists public.kelas (
+  id uuid primary key default gen_random_uuid(),
+  nama text not null check (length(trim(nama)) > 0),
+  keterangan text,
+  aktif boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.penugasan (
   id uuid primary key default gen_random_uuid(),
   dosen_id uuid not null references public.dosen (id) on delete restrict,
   mata_kuliah_id uuid not null references public.mata_kuliah (id) on delete restrict,
   periode_id uuid not null references public.periode (id) on delete cascade,
+  kelas_id uuid not null references public.kelas (id) on delete restrict,
   metode text not null check (metode in ('T', 'P')),
   created_at timestamptz not null default now(),
-  unique (dosen_id, mata_kuliah_id, periode_id, metode)
+  unique (dosen_id, mata_kuliah_id, periode_id, metode, kelas_id)
 );
 
 create table if not exists public.pertemuan (
@@ -171,6 +180,7 @@ create trigger pertemuan_audit
 alter table public.dosen enable row level security;
 alter table public.mata_kuliah enable row level security;
 alter table public.periode enable row level security;
+alter table public.kelas enable row level security;
 alter table public.penugasan enable row level security;
 alter table public.pertemuan enable row level security;
 alter table public.audit_log enable row level security;
@@ -181,7 +191,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'dosen', 'mata_kuliah', 'periode', 'penugasan', 'pertemuan', 'audit_log'
+    'dosen', 'mata_kuliah', 'periode', 'kelas', 'penugasan', 'pertemuan', 'audit_log'
   ]
   loop
     execute format('drop policy if exists %I on public.%I', t || '_admin_all', t);

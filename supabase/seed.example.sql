@@ -3,7 +3,7 @@
 -- Hanya untuk mencoba aplikasi. Jangan dipakai di produksi.
 -- Hapus data ini sebelum memakai sistem dengan data sebenarnya:
 --   truncate public.pertemuan, public.penugasan, public.mata_kuliah,
---            public.dosen, public.periode restart identity cascade;
+--            public.kelas, public.dosen, public.periode restart identity cascade;
 -- ============================================================================
 
 insert into public.periode (nama, tgl_mulai, tgl_selesai, aktif)
@@ -19,14 +19,21 @@ values
   ('CONTOH1', 'Mata Kuliah Contoh Teori', 3, 'T', true),
   ('CONTOH2', 'Mata Kuliah Contoh Praktik', 2, 'P', true);
 
-insert into public.penugasan (dosen_id, mata_kuliah_id, periode_id, metode)
-select d.id, m.id, p.id, m.metode_default
+insert into public.kelas (nama, keterangan, aktif)
+values
+  ('Contoh 1A', 'Kelas contoh', true),
+  ('Contoh 1B', 'Kelas contoh', true);
+
+insert into public.penugasan (dosen_id, mata_kuliah_id, periode_id, kelas_id, metode)
+select d.id, m.id, p.id, k.id, m.metode_default
 from public.dosen d
 cross join public.mata_kuliah m
 cross join public.periode p
+cross join public.kelas k
 where p.aktif
   and d.nidn in ('0000000001', '0000000002')
-  and m.kode in ('CONTOH1', 'CONTOH2');
+  and m.kode in ('CONTOH1', 'CONTOH2')
+  and k.nama = 'Contoh 1A';
 
 -- Buat 16 pertemuan berstatus "belum" untuk tiap penugasan.
 insert into public.pertemuan (penugasan_id, minggu_ke, status)

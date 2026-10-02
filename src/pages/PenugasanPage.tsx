@@ -9,7 +9,7 @@ import { MasterTable, type Kolom } from '@/components/MasterTable'
 import { Toolbar } from '@/components/Toolbar'
 import { MiniTrack } from '@/components/WeekStrip'
 import { useToast } from '@/components/ui/Toast'
-import { useDosen, useMataKuliah, usePeriode } from '@/hooks/useMasterData'
+import { useDosen, useKelas, useMataKuliah, usePeriode } from '@/hooks/useMasterData'
 import {
   useHapusPenugasan,
   usePenugasanLengkap,
@@ -26,6 +26,7 @@ interface NilaiForm {
   dosen_id: string
   mata_kuliah_id: string
   periode_id: string
+  kelas_id: string
   metode: 'T' | 'P'
 }
 
@@ -34,6 +35,7 @@ export function PenugasanPage() {
   const { data: dosen = [] } = useDosen()
   const { data: mataKuliah = [] } = useMataKuliah()
   const { data: periode = [] } = usePeriode()
+  const { data: kelas = [] } = useKelas()
   const { aturan } = usePengaturan()
   const simpan = useSimpanPenugasan()
   const hapus = useHapusPenugasan()
@@ -45,7 +47,11 @@ export function PenugasanPage() {
   const [akanHapus, setAkanHapus] = useState<PenugasanLengkap | null>(null)
   const [galatHapus, setGalatHapus] = useState<string | null>(null)
 
-  const bisaTambah = dosen.length > 0 && mataKuliah.length > 0 && periode.length > 0
+  const bisaTambah =
+    dosen.length > 0 &&
+    mataKuliah.length > 0 &&
+    periode.length > 0 &&
+    kelas.length > 0
   const aktifPeriode = periode.find((p) => p.aktif) ?? periode[0]
 
   function bukaForm() {
@@ -54,6 +60,7 @@ export function PenugasanPage() {
       dosen_id: dosen[0]?.id ?? '',
       mata_kuliah_id: mataKuliah[0]?.id ?? '',
       periode_id: aktifPeriode?.id ?? '',
+      kelas_id: kelas[0]?.id ?? '',
       metode: mataKuliah[0]?.metode_default ?? 'T',
     })
   }
@@ -79,6 +86,10 @@ export function PenugasanPage() {
           {p.metode}
         </span>
       ),
+    },
+    {
+      judul: 'Kelas',
+      render: (p) => <span className="text-ink">{p.kelas?.nama ?? '–'}</span>,
     },
     {
       judul: 'Periode',
@@ -112,6 +123,7 @@ export function PenugasanPage() {
                 dosen_id: p.dosen?.id ?? '',
                 mata_kuliah_id: p.mata_kuliah?.id ?? '',
                 periode_id: p.periode?.id ?? '',
+                kelas_id: p.kelas?.id ?? '',
                 metode: p.metode,
               })
             }
@@ -141,6 +153,7 @@ export function PenugasanPage() {
     if (!form.dosen_id) return setGalatForm('Pilih dosen.')
     if (!form.mata_kuliah_id) return setGalatForm('Pilih mata kuliah.')
     if (!form.periode_id) return setGalatForm('Pilih periode.')
+    if (!form.kelas_id) return setGalatForm('Pilih kelas.')
     setGalatForm(null)
     try {
       await simpan.mutateAsync(form)
@@ -168,7 +181,7 @@ export function PenugasanPage() {
       <Toolbar
         cari={cari}
         setCari={setCari}
-        placeholder="Cari dosen atau mata kuliah"
+        placeholder="Cari dosen, mata kuliah, atau kelas"
         jumlah={query.data?.length ?? 0}
         labelJumlah="penugasan"
       >
@@ -185,8 +198,8 @@ export function PenugasanPage() {
 
       {!bisaTambah && (query.data?.length ?? 0) === 0 ? (
         <div className="rounded-[10px] border border-line bg-surface-2 px-4 py-3 text-[13px] text-muted">
-          Lengkapi dahulu master data dosen, mata kuliah, dan periode sebelum membuat
-          penugasan.
+          Lengkapi dahulu master data dosen, mata kuliah, kelas, dan periode sebelum
+          membuat penugasan.
         </div>
       ) : null}
 
@@ -195,11 +208,11 @@ export function PenugasanPage() {
         kolom={kolom}
         barisKunci={(p) => p.id}
         saring={(p) =>
-          `${p.dosen?.nama ?? ''} ${p.mata_kuliah?.nama ?? ''} ${p.mata_kuliah?.kode ?? ''}`
+          `${p.dosen?.nama ?? ''} ${p.mata_kuliah?.nama ?? ''} ${p.mata_kuliah?.kode ?? ''} ${p.kelas?.nama ?? ''}`
         }
         kataKunci={cari}
         judulKosong="Belum ada penugasan"
-        pesanKosong="Hubungkan dosen dengan mata kuliah, metode, dan periode di sini."
+        pesanKosong="Hubungkan dosen, mata kuliah, kelas, dan periode di sini."
         aksiKosong={
           bisaTambah ? (
             <Button variasi="utama" onClick={bukaForm} ikon={<Plus className="size-4" />}>
@@ -261,6 +274,22 @@ export function PenugasanPage() {
               )}
             </Field>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field label="Kelas">
+                {(p) => (
+                  <Select
+                    {...p}
+                    value={form.kelas_id}
+                    onChange={(e) => setForm({ ...form, kelas_id: e.target.value })}
+                  >
+                    {kelas.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.nama}
+                        {k.aktif ? '' : ' (nonaktif)'}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
               <Field label="Periode">
                 {(p) => (
                   <Select
@@ -276,21 +305,21 @@ export function PenugasanPage() {
                   </Select>
                 )}
               </Field>
-              <Field label="Metode">
-                {(p) => (
-                  <Select
-                    {...p}
-                    value={form.metode}
-                    onChange={(e) =>
-                      setForm({ ...form, metode: e.target.value as 'T' | 'P' })
-                    }
-                  >
-                    <option value="T">Teori</option>
-                    <option value="P">Praktik</option>
-                  </Select>
-                )}
-              </Field>
             </div>
+            <Field label="Metode">
+              {(p) => (
+                <Select
+                  {...p}
+                  value={form.metode}
+                  onChange={(e) =>
+                    setForm({ ...form, metode: e.target.value as 'T' | 'P' })
+                  }
+                >
+                  <option value="T">Teori</option>
+                  <option value="P">Praktik</option>
+                </Select>
+              )}
+            </Field>
             <p className="text-xs text-muted">
               Metode terpilih: {namaMetode(form.metode)}.
             </p>

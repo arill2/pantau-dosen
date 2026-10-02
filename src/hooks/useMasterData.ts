@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { buka, pastikanSiap } from '@/lib/api'
 import { KUNCI_QUERY } from '@/lib/queryClient'
 import { supabase } from '@/lib/supabase'
-import type { Dosen, MataKuliah, Periode } from '@/lib/types'
+import type { Dosen, Kelas, MataKuliah, Periode } from '@/lib/types'
 
-type Tabel = 'dosen' | 'mata_kuliah' | 'periode'
+type Tabel = 'dosen' | 'mata_kuliah' | 'periode' | 'kelas'
 
 function kunciUntuk(tabel: Tabel) {
   if (tabel === 'dosen') return KUNCI_QUERY.dosen
   if (tabel === 'mata_kuliah') return KUNCI_QUERY.mataKuliah
+  if (tabel === 'kelas') return KUNCI_QUERY.kelas
   return KUNCI_QUERY.periode
 }
 
@@ -36,6 +37,10 @@ export function useMataKuliah() {
 
 export function usePeriode() {
   return useDaftar<Periode>('periode', 'tgl_mulai')
+}
+
+export function useKelas() {
+  return useDaftar<Kelas>('kelas', 'nama')
 }
 
 function useSimpanMutasi(tabel: Tabel) {
@@ -93,3 +98,5 @@ export const useSimpanMataKuliah = () => useSimpanMutasi('mata_kuliah')
 export const useHapusMataKuliah = () => useHapusMutasi('mata_kuliah')
 export const useSimpanPeriode = () => useSimpanMutasi('periode')
 export const useHapusPeriode = () => useHapusMutasi('periode')
+export const useSimpanKelas = () => useSimpanMutasi('kelas')
+export const useHapusKelas = () => useHapusMutasi('kelas')

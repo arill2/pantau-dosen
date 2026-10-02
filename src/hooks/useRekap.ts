@@ -15,6 +15,7 @@ const SELECT_PENUGASAN = `
   dosen:dosen_id ( id, nama, nidn ),
   mata_kuliah:mata_kuliah_id ( id, kode, nama, sks ),
   periode:periode_id ( id, nama ),
+  kelas:kelas_id ( id, nama ),
   pertemuan ( id, penugasan_id, minggu_ke, tanggal, status, catatan, updated_at )
 `
 
@@ -46,6 +47,7 @@ export function useSimpanPenugasan() {
       dosen_id: string
       mata_kuliah_id: string
       periode_id: string
+      kelas_id: string
       metode: 'T' | 'P'
     }) => {
       pastikanSiap()

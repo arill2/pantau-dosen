@@ -9,6 +9,7 @@ const JUDUL: Record<string, { judul: string; keterangan: string }> = {
   '/': { judul: 'Dashboard Rekap', keterangan: 'Kehadiran dosen per pekan' },
   '/dosen': { judul: 'Dosen', keterangan: 'Master data dosen' },
   '/mata-kuliah': { judul: 'Mata kuliah', keterangan: 'Master mata kuliah' },
+  '/kelas': { judul: 'Kelas', keterangan: 'Master kelas' },
   '/periode': { judul: 'Periode', keterangan: 'Semester dan tahun ajaran' },
   '/penugasan': { judul: 'Penugasan', keterangan: 'Dosen, mata kuliah, metode' },
   '/pengaturan': { judul: 'Pengaturan', keterangan: 'Akun dan aturan perhitungan' },

@@ -2,6 +2,7 @@ import {
   BookOpen,
   CalendarRange,
   ClipboardList,
+  DoorOpen,
   ListChecks,
   Settings,
   Users,
@@ -31,6 +32,7 @@ export const NAVIGASI: Grup[] = [
     item: [
       { ke: '/dosen', label: 'Dosen', ikon: Users },
       { ke: '/mata-kuliah', label: 'Mata kuliah', ikon: BookOpen },
+      { ke: '/kelas', label: 'Kelas', ikon: DoorOpen },
       { ke: '/periode', label: 'Periode', ikon: CalendarRange },
       { ke: '/penugasan', label: 'Penugasan', ikon: ClipboardList },
     ],

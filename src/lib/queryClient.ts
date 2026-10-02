@@ -14,6 +14,7 @@ export const KUNCI_QUERY = {
   dosen: ['dosen'] as const,
   mataKuliah: ['mata-kuliah'] as const,
   periode: ['periode'] as const,
+  kelas: ['kelas'] as const,
   penugasan: ['penugasan'] as const,
   rekap: ['rekap'] as const,
   profil: ['profil'] as const,

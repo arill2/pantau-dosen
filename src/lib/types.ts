@@ -34,11 +34,20 @@ export interface Periode {
   created_at?: string
 }
 
+export interface Kelas {
+  id: string
+  nama: string
+  keterangan: string | null
+  aktif: boolean
+  created_at?: string
+}
+
 export interface Penugasan {
   id: string
   dosen_id: string
   mata_kuliah_id: string
   periode_id: string
+  kelas_id: string
   metode: Metode
   created_at?: string
 }
@@ -67,6 +76,7 @@ export interface PenugasanLengkap {
   dosen: Pick<Dosen, 'id' | 'nama' | 'nidn'> | null
   mata_kuliah: Pick<MataKuliah, 'id' | 'kode' | 'nama' | 'sks'> | null
   periode: Pick<Periode, 'id' | 'nama'> | null
+  kelas: Pick<Kelas, 'id' | 'nama'> | null
   pertemuan: Pertemuan[]
 }
 

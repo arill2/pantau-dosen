@@ -18,7 +18,7 @@ import { RekapBulanan } from '@/components/RekapBulanan'
 import { STATUS_META } from '@/components/StatusPertemuan'
 import { PertemuanDialog } from '@/components/PertemuanDialog'
 import { useToast } from '@/components/ui/Toast'
-import { useDosen, useMataKuliah, usePeriode } from '@/hooks/useMasterData'
+import { useDosen, useKelas, useMataKuliah, usePeriode } from '@/hooks/useMasterData'
 import { usePenugasanLengkap } from '@/hooks/useRekap'
 import { usePengaturan } from '@/contexts/SettingsContext'
 import {
@@ -42,6 +42,7 @@ export function DashboardPage() {
   const { data: periode = [] } = usePeriode()
   const { data: dosen = [] } = useDosen()
   const { data: mataKuliah = [] } = useMataKuliah()
+  const { data: kelas = [] } = useKelas()
   const rekapQuery = usePenugasanLengkap()
   const { aturan } = usePengaturan()
   const { tampil } = useToast()
@@ -50,6 +51,7 @@ export function DashboardPage() {
   const [bulan, setBulan] = useState<FilterBulan>('semua')
   const [dosenId, setDosenId] = useState('semua')
   const [mkId, setMkId] = useState('semua')
+  const [kelasId, setKelasId] = useState('semua')
   const [metode, setMetode] = useState<'semua' | 'T' | 'P'>('semua')
   const [cari, setCari] = useState('')
   const [urut, setUrut] = useState<{ kolom: Kolom; arah: 'naik' | 'turun' }>({
@@ -75,7 +77,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     setHalaman(1)
-  }, [periodeId, bulan, dosenId, mkId, metode, cari, tampilan])
+  }, [periodeId, bulan, dosenId, mkId, kelasId, metode, cari, tampilan])
 
   useEffect(() => {
     if (!eksporTerbuka) return
@@ -92,11 +94,12 @@ export function DashboardPage() {
       if (periodeId && p.periode?.id !== periodeId) return false
       if (dosenId !== 'semua' && p.dosen?.id !== dosenId) return false
       if (mkId !== 'semua' && p.mata_kuliah?.id !== mkId) return false
+      if (kelasId !== 'semua' && p.kelas?.id !== kelasId) return false
       if (metode !== 'semua' && p.metode !== metode) return false
       return true
     })
     return dasar.map((p) => hitungRekap(p, bulanEfektif, aturan))
-  }, [rekapQuery.data, periodeId, dosenId, mkId, metode, bulanEfektif, aturan])
+  }, [rekapQuery.data, periodeId, dosenId, mkId, kelasId, metode, bulanEfektif, aturan])
 
   const bulanList = useMemo(() => daftarBulanAktif(baris), [baris])
 
@@ -107,7 +110,8 @@ export function DashboardPage() {
           (b) =>
             b.dosen?.nama.toLowerCase().includes(q) ||
             b.mata_kuliah?.nama.toLowerCase().includes(q) ||
-            b.mata_kuliah?.kode.toLowerCase().includes(q),
+            b.mata_kuliah?.kode.toLowerCase().includes(q) ||
+            b.kelas?.nama.toLowerCase().includes(q),
         )
       : baris
 
@@ -142,6 +146,7 @@ export function DashboardPage() {
     bulan !== 'semua' ||
     dosenId !== 'semua' ||
     mkId !== 'semua' ||
+    kelasId !== 'semua' ||
     metode !== 'semua' ||
     cari.trim() !== ''
 
@@ -157,6 +162,7 @@ export function DashboardPage() {
     setBulan('semua')
     setDosenId('semua')
     setMkId('semua')
+    setKelasId('semua')
     setMetode('semua')
     setCari('')
   }
@@ -239,7 +245,7 @@ export function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-12">
-          <div className="col-span-2 lg:col-span-4">
+          <div className="lg:col-span-2">
             <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-periode">
               Periode
             </label>
@@ -291,6 +297,20 @@ export function DashboardPage() {
           </div>
 
           <div className="lg:col-span-2">
+            <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-kelas">
+              Kelas
+            </label>
+            <Select id="f-kelas" value={kelasId} onChange={(e) => setKelasId(e.target.value)}>
+              <option value="semua">Semua kelas</option>
+              {kelas.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.nama}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="lg:col-span-2">
             <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-mk">
               Mata kuliah
             </label>
@@ -330,7 +350,7 @@ export function DashboardPage() {
                   type="search"
                   value={cari}
                   onChange={(e) => setCari(e.target.value)}
-                  placeholder="Nama dosen atau mata kuliah"
+                  placeholder="Nama dosen, mata kuliah, atau kelas"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -470,6 +490,9 @@ export function DashboardPage() {
                     </th>
                     <th scope="col" className="min-w-56 px-4 py-3 font-semibold">
                       Mata kuliah
+                    </th>
+                    <th scope="col" className="min-w-28 px-4 py-3 font-semibold">
+                      Kelas
                     </th>
                     <th scope="col" className="w-16 px-2 py-3 text-center font-semibold">
                       T/P
@@ -642,6 +665,11 @@ function BarisTabel({
         <span className="block max-w-56 truncate">{baris.mata_kuliah?.nama ?? '–'}</span>
         <span className="text-[11px] text-muted">{baris.mata_kuliah?.kode ?? ''}</span>
       </td>
+      <td className="px-4 py-2.5">
+        <span className="block max-w-28 truncate text-ink">
+          {baris.kelas?.nama ?? '–'}
+        </span>
+      </td>
       <td className="px-2 py-2.5 text-center">
         <span className="inline-grid size-6 place-items-center rounded-[4px] bg-brand-soft text-[11px] font-bold text-brand-strong">
           {baris.metode}
@@ -728,11 +756,16 @@ function KartuRekap({
           <p className="truncate text-[13px] text-muted">
             {baris.mata_kuliah?.kode} · {baris.mata_kuliah?.nama}
           </p>
-          <p className="mt-1 inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted">
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-muted">
             <span className="grid size-5 place-items-center rounded-[4px] bg-brand-soft text-[10px] font-bold text-brand-strong">
               {baris.metode}
             </span>
             {namaMetode(baris.metode)}
+            <span className="text-muted" aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <span className="text-muted">Kelas</span>
+              <span className="font-bold text-ink">{baris.kelas?.nama ?? '–'}</span>
+            </span>
           </p>
         </div>
         <div className="shrink-0 text-right">

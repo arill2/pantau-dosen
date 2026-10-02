@@ -40,6 +40,7 @@ function barisEkspor(baris: RekapBaris[], bulan: FilterBulan) {
       'Mata Kuliah': item.mata_kuliah
         ? `${item.mata_kuliah.kode} · ${item.mata_kuliah.nama}`
         : '–',
+      Kelas: item.kelas?.nama ?? '–',
       Metode: item.metode === 'T' ? 'Teori' : 'Praktik',
       ...minggu,
       'Total Hadir': item.totalHadir,
@@ -58,6 +59,7 @@ export function eksporExcel(
   sheet['!cols'] = [
     { wch: 26 },
     { wch: 30 },
+    { wch: 14 },
     { wch: 9 },
     ...Array.from({ length: TOTAL_MINGGU }, () => ({ wch: 4 })),
     { wch: 11 },
@@ -105,6 +107,7 @@ export function eksporPdf(
   const head = [
     'Dosen',
     'Mata Kuliah',
+    'Kelas',
     'T/P',
     ...Array.from({ length: TOTAL_MINGGU }, (_, i) => String(i + 1)),
     'Total',
@@ -120,6 +123,7 @@ export function eksporPdf(
     return [
       item.dosen?.nama ?? '–',
       item.mata_kuliah?.nama ?? '–',
+      item.kelas?.nama ?? '–',
       item.metode,
       ...kolom,
       String(item.totalHadir),
@@ -135,17 +139,18 @@ export function eksporPdf(
     headStyles: { fillColor: [178, 58, 30], textColor: 255, fontSize: 7 },
     alternateRowStyles: { fillColor: [247, 244, 239] },
     columnStyles: {
-      0: { cellWidth: 110 },
-      1: { cellWidth: 120 },
-      2: { cellWidth: 24, halign: 'center' },
+      0: { cellWidth: 95 },
+      1: { cellWidth: 105 },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 24, halign: 'center' },
       ...Object.fromEntries(
         Array.from({ length: TOTAL_MINGGU }, (_, i) => [
-          i + 3,
+          i + 4,
           { cellWidth: 18, halign: 'center' },
         ]),
       ),
-      19: { cellWidth: 34, halign: 'center' },
-      20: { cellWidth: 42, halign: 'right' },
+      20: { cellWidth: 34, halign: 'center' },
+      21: { cellWidth: 42, halign: 'right' },
     },
     didDrawPage: () => {
       const page = doc.getNumberOfPages()
@@ -174,6 +179,7 @@ export function eksporExcelBulanan(
       'Mata Kuliah': item.mata_kuliah
         ? `${item.mata_kuliah.kode} · ${item.mata_kuliah.nama}`
         : '–',
+      Kelas: item.kelas?.nama ?? '–',
       Metode: item.metode === 'T' ? 'Teori' : 'Praktik',
     }
     for (const r of hitungPerBulan(item, bulanList, aturan)) {
@@ -234,6 +240,7 @@ export function eksporPdfBulanan(
   const head = [
     'Dosen',
     'Mata Kuliah',
+    'Kelas',
     'T/P',
     ...bulanList.map((b) => BULAN_SINGKAT[b]),
     'Total',
@@ -245,6 +252,7 @@ export function eksporPdfBulanan(
     return [
       item.dosen?.nama ?? '–',
       item.mata_kuliah?.nama ?? '–',
+      item.kelas?.nama ?? '–',
       item.metode,
       ...per.map((r) =>
         r.adaData
@@ -268,13 +276,14 @@ export function eksporPdfBulanan(
     headStyles: { fillColor: [178, 58, 30], textColor: 255, fontSize: 7 },
     alternateRowStyles: { fillColor: [247, 244, 239] },
     columnStyles: {
-      0: { cellWidth: 105 },
-      1: { cellWidth: 115 },
-      2: { cellWidth: 24, halign: 'center' },
+      0: { cellWidth: 100 },
+      1: { cellWidth: 110 },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 24, halign: 'center' },
       ...Object.fromEntries(
-        bulanList.map((_, i) => [i + 3, { cellWidth: 70, halign: 'center' }]),
+        bulanList.map((_, i) => [i + 4, { cellWidth: 70, halign: 'center' }]),
       ),
-      [bulanList.length + 3]: { cellWidth: 84, halign: 'right' },
+      [bulanList.length + 4]: { cellWidth: 84, halign: 'right' },
     },
     didDrawPage: () => {
       const page = doc.getNumberOfPages()
