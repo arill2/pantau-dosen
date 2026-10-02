@@ -18,7 +18,8 @@ desain pada `DESIGN.md`.
 - Penanda visual untuk persentase di bawah ambang batas.
 - Ekspor Excel (.xlsx) dan PDF (landscape) sesuai filter aktif.
 - Audit log perubahan pertemuan (siapa, kapan, nilai lama dan baru).
-- **Laporan Ketua Kelas**: ketua kelas melaporkan kehadiran dosen lewat halaman publik `/lapor` memakai kode akses kelas; masuk ke log admin (siapa, kelas mana, kapan) dengan verifikasi dan tombol "Terapkan ke rekap". Duplikat pekan dicegah.
+- **Laporan Ketua Kelas**: ketua kelas melaporkan kehadiran dosen lewat halaman publik `/lapor` dengan memilih kelas (tanpa kode); masuk ke log admin (siapa, kelas mana, kapan) dengan verifikasi, **edit sebelum disetujui**, tombol "Terima/Tolak", dan "Terapkan ke rekap". Duplikat pekan dicegah.
+- Filter/grup status kehadiran di dashboard admin: Hadir, Tidak hadir, Izin, Pengganti (chip berjumlah, bisa diklik).
 - Tema terang dan gelap, tata letak responsif (desktop, tablet, dan ponsel).
 
 ## Teknologi
@@ -46,7 +47,8 @@ Bila `.env` belum diisi, aplikasi menampilkan halaman panduan setup, bukan error
    *Sudah pernah memasang versi lama?* Jalankan berurutan migrasi di
    `supabase/migrations/`: `0002_kelas.sql`, `0003_kode_sks_kelas.sql`,
    `0004_laporan.sql`, `0005_laporan_validasi.sql`, `0006_lapor_pilih_kelas.sql`,
-   `0007_verifikasi.sql`, `0008_dokumentasi_opsional.sql`, `0009_tolak_bisa_ulang.sql`.
+   `0007_verifikasi.sql`, `0008_dokumentasi_opsional.sql`, `0009_tolak_bisa_ulang.sql`,
+   `0010_admin_edit_laporan.sql`.
 3. Buka **Project Settings > API**, salin **Project URL** dan **anon public key**
    ke `.env`:
    ```

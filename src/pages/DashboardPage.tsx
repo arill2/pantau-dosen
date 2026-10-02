@@ -22,12 +22,17 @@ import { useDosen, useKelas, useMataKuliah, usePeriode } from '@/hooks/useMaster
 import { usePenugasanLengkap } from '@/hooks/useRekap'
 import { usePengaturan } from '@/contexts/SettingsContext'
 import {
+  adaStatus,
   cocokBulan,
   daftarBulanAktif,
   hitungRekap,
+  rekapStatus,
   ringkasRekap,
+  STATUS_URUT,
   TOTAL_MINGGU,
   type FilterBulan,
+  type HitungStatus,
+  type StatusFilter,
 } from '@/lib/attendance'
 import { formatPersen, NAMA_BULAN, namaMetode } from '@/lib/format'
 import type { RekapBaris, StatusPertemuan } from '@/lib/types'
@@ -53,6 +58,7 @@ export function DashboardPage() {
   const [mkId, setMkId] = useState('semua')
   const [kelasId, setKelasId] = useState('semua')
   const [metode, setMetode] = useState<'semua' | 'T' | 'P'>('semua')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua')
   const [cari, setCari] = useState('')
   const [urut, setUrut] = useState<{ kolom: Kolom; arah: 'naik' | 'turun' }>({
     kolom: 'dosen',
@@ -77,7 +83,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     setHalaman(1)
-  }, [periodeId, bulan, dosenId, mkId, kelasId, metode, cari, tampilan])
+  }, [periodeId, bulan, dosenId, mkId, kelasId, metode, statusFilter, cari, tampilan])
 
   useEffect(() => {
     if (!eksporTerbuka) return
@@ -88,9 +94,10 @@ export function DashboardPage() {
     return () => window.removeEventListener('keydown', padaTombol)
   }, [eksporTerbuka])
 
-  const baris = useMemo(() => {
+  // Penugasan yang lolos semua filter (dipakai untuk ringkasan status & tabel).
+  const dasar = useMemo(() => {
     if (!rekapQuery.data) return []
-    const dasar = rekapQuery.data.filter((p) => {
+    return rekapQuery.data.filter((p) => {
       if (periodeId && p.periode?.id !== periodeId) return false
       if (dosenId !== 'semua' && p.dosen?.id !== dosenId) return false
       if (mkId !== 'semua' && p.mata_kuliah?.id !== mkId) return false
@@ -98,8 +105,36 @@ export function DashboardPage() {
       if (metode !== 'semua' && p.metode !== metode) return false
       return true
     })
-    return dasar.map((p) => hitungRekap(p, bulanEfektif, aturan))
-  }, [rekapQuery.data, periodeId, dosenId, mkId, kelasId, metode, bulanEfektif, aturan])
+  }, [rekapQuery.data, periodeId, dosenId, mkId, kelasId, metode])
+
+  // Ringkasan jumlah tiap status (Hadir/Tidak hadir/Izin/Pengganti), mengikuti
+  // filter aktif — dipakai sebagai chip filter yang bisa diklik.
+  const statusRingkas = useMemo<HitungStatus>(() => {
+    const total: HitungStatus = {
+      hadir: 0,
+      tidak_hadir: 0,
+      izin: 0,
+      pengganti: 0,
+      belum: 0,
+    }
+    for (const p of dasar) {
+      const r = rekapStatus(p, bulanEfektif)
+      total.hadir += r.hadir
+      total.tidak_hadir += r.tidak_hadir
+      total.izin += r.izin
+      total.pengganti += r.pengganti
+      total.belum += r.belum
+    }
+    return total
+  }, [dasar, bulanEfektif])
+
+  const baris = useMemo(() => {
+    const hasil =
+      statusFilter === 'semua'
+        ? dasar
+        : dasar.filter((p) => adaStatus(p, bulanEfektif, statusFilter))
+    return hasil.map((p) => hitungRekap(p, bulanEfektif, aturan))
+  }, [dasar, bulanEfektif, aturan, statusFilter])
 
   const bulanList = useMemo(() => daftarBulanAktif(baris), [baris])
 
@@ -148,6 +183,7 @@ export function DashboardPage() {
     mkId !== 'semua' ||
     kelasId !== 'semua' ||
     metode !== 'semua' ||
+    statusFilter !== 'semua' ||
     cari.trim() !== ''
 
   function aturUrut(kolom: Kolom) {
@@ -164,6 +200,7 @@ export function DashboardPage() {
     setMkId('semua')
     setKelasId('semua')
     setMetode('semua')
+    setStatusFilter('semua')
     setCari('')
   }
 
@@ -437,6 +474,52 @@ export function DashboardPage() {
         />
       </section>
 
+      <section
+        aria-label="Filter status kehadiran"
+        className="rounded-[10px] border border-line bg-surface p-3 sm:p-4"
+      >
+        <div className="mb-2.5 flex items-center gap-2">
+          <span className="text-[11px] font-bold tracking-wide text-muted uppercase">
+            Kelompokkan status
+          </span>
+          <span className="text-[11px] text-muted">
+            · {tampilan === 'bulan' ? 'semua bulan' : bulan === 'semua' ? 'semua bulan' : NAMA_BULAN[bulan]}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatusChip
+            label="Semua"
+            jumlah={ringkasan.jumlahPenugasan}
+            aktif={statusFilter === 'semua'}
+            onClick={() => setStatusFilter('semua')}
+          />
+          {STATUS_URUT.map((s) => {
+            const meta = STATUS_META[s]
+            return (
+              <StatusChip
+                key={s}
+                label={meta.label}
+                tanda={meta.tanda}
+                jumlah={statusRingkas[s]}
+                kelasTeks={meta.teks}
+                kelasLatar={meta.latar}
+                aktif={statusFilter === s}
+                onClick={() =>
+                  setStatusFilter((prev) => (prev === s ? 'semua' : s))
+                }
+              />
+            )
+          })}
+        </div>
+        {statusFilter !== 'semua' ? (
+          <p className="mt-2.5 text-[11px] text-muted">
+            Menampilkan penugasan yang memiliki minimal satu pertemuan berstatus{' '}
+            <strong className="text-ink">{STATUS_META[statusFilter].label}</strong> pada
+            periode/bulan terpilih.
+          </p>
+        ) : null}
+      </section>
+
       {rekapQuery.isLoading ? (
         <TableSkeleton />
       ) : rekapQuery.isError ? (
@@ -583,6 +666,56 @@ export function DashboardPage() {
         onTutup={() => setDialog(null)}
       />
     </div>
+  )
+}
+
+function StatusChip({
+  label,
+  jumlah,
+  aktif,
+  onClick,
+  tanda,
+  kelasTeks,
+  kelasLatar,
+}: {
+  label: string
+  jumlah: number
+  aktif: boolean
+  onClick: () => void
+  tanda?: string
+  kelasTeks?: string
+  kelasLatar?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={aktif}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-semibold transition-colors duration-150 ${
+        aktif
+          ? 'border-ink bg-ink text-paper'
+          : `border-line-strong bg-surface text-ink hover:bg-surface-2`
+      }`}
+    >
+      {tanda ? (
+        <span
+          aria-hidden="true"
+          className={`grid size-5 place-items-center rounded-full text-[11px] font-bold ${
+            aktif ? 'bg-paper/20 text-paper' : `${kelasLatar} ${kelasTeks}`
+          }`}
+        >
+          {tanda}
+        </span>
+      ) : null}
+      {label}
+      <span
+        className={`tnum rounded-full px-1.5 text-[11px] font-bold ${
+          aktif ? 'bg-paper/20 text-paper' : 'bg-surface-2 text-muted'
+        }`}
+      >
+        {jumlah}
+      </span>
+    </button>
   )
 }
 

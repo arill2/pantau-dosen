@@ -1,5 +1,10 @@
 import { bulanDariTanggal } from './format'
-import type { Pertemuan, PenugasanLengkap, RekapBaris } from './types'
+import type {
+  Pertemuan,
+  PenugasanLengkap,
+  RekapBaris,
+  StatusPertemuan,
+} from './types'
 
 export type DasarPerhitungan = 'terlaksana' | 'terjadwal' | 'tetap16'
 
@@ -163,4 +168,48 @@ export function hitungPerBulan(
       ),
     }
   })
+}
+
+// ---------------------------------------------------------------------------
+// Filter status kehadiran
+// ---------------------------------------------------------------------------
+export type StatusFilter = 'semua' | StatusPertemuan
+
+export const STATUS_URUT: StatusPertemuan[] = [
+  'hadir',
+  'tidak_hadir',
+  'izin',
+  'pengganti',
+  'belum',
+]
+
+export type HitungStatus = Record<StatusPertemuan, number>
+
+/** Jumlah pertemuan per status dalam filter bulan yang aktif. */
+export function rekapStatus(
+  penugasan: PenugasanLengkap,
+  bulan: FilterBulan,
+): HitungStatus {
+  const hasil: HitungStatus = {
+    hadir: 0,
+    tidak_hadir: 0,
+    izin: 0,
+    pengganti: 0,
+    belum: 0,
+  }
+  for (const p of penugasan.pertemuan) {
+    if (cocokBulan(p, bulan)) hasil[p.status] += 1
+  }
+  return hasil
+}
+
+/** Apakah penugasan punya minimal satu pertemuan dengan status tsb. */
+export function adaStatus(
+  penugasan: PenugasanLengkap,
+  bulan: FilterBulan,
+  status: StatusPertemuan,
+): boolean {
+  return penugasan.pertemuan.some(
+    (p) => cocokBulan(p, bulan) && p.status === status,
+  )
 }

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Check, ExternalLink, Eye, X } from 'lucide-react'
+import { Check, ExternalLink, Eye, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Select, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { StateBlock, TableSkeleton, InlineError } from '@/components/ui/Feedback'
 import { Toolbar } from '@/components/Toolbar'
+import { UbahLaporanDialog } from '@/components/UbahLaporanDialog'
 import { useToast } from '@/components/ui/Toast'
 import { useKelas } from '@/hooks/useMasterData'
 import {
@@ -62,6 +63,7 @@ export function LaporanPage() {
   const [status, setStatus] = useState<'semua' | StatusLaporan>('baru')
   const [cari, setCari] = useState('')
   const [detail, setDetail] = useState<Laporan | null>(null)
+  const [edit, setEdit] = useState<Laporan | null>(null)
   const [akanTolak, setAkanTolak] = useState<Laporan | null>(null)
   const [alasan, setAlasan] = useState('')
   const [galat, setGalat] = useState<string | null>(null)
@@ -249,6 +251,17 @@ export function LaporanPage() {
                             <>
                               <Button
                                 ukuran="sm"
+                                variasi="sekunder"
+                                onClick={() => {
+                                  setGalat(null)
+                                  setEdit(l)
+                                }}
+                                ikon={<Pencil className="size-3.5" />}
+                              >
+                                Ubah
+                              </Button>
+                              <Button
+                                ukuran="sm"
                                 variasi="utama"
                                 disabled={terapkan.isPending}
                                 onClick={() => void terapkanKeRekap(l)}
@@ -314,9 +327,20 @@ export function LaporanPage() {
                     <>
                       <Button
                         ukuran="sm"
+                        variasi="sekunder"
+                        onClick={() => {
+                          setGalat(null)
+                          setEdit(l)
+                        }}
+                        ikon={<Pencil className="size-3.5" />}
+                      >
+                        Ubah
+                      </Button>
+                      <Button
+                        ukuran="sm"
                         variasi="utama"
                         disabled={terapkan.isPending}
-                                onClick={() => void terapkanKeRekap(l)}
+                        onClick={() => void terapkanKeRekap(l)}
                         ikon={<Check className="size-3.5" />}
                       >
                         Terima
@@ -352,19 +376,32 @@ export function LaporanPage() {
           detail ? (
             <>
               {detail.status === 'baru' ? (
-                <Button
-                  variasi="halus"
-                  onClick={() => {
-                    setGalat(null)
-                    setAlasan('')
-                    setDetail(null)
-                    setAkanTolak(detail)
-                  }}
-                  className="text-alfa sm:mr-auto"
-                  ikon={<X className="size-4" />}
-                >
-                  Tolak
-                </Button>
+                <>
+                  <Button
+                    variasi="sekunder"
+                    onClick={() => {
+                      setDetail(null)
+                      setEdit(detail)
+                    }}
+                    className="sm:mr-auto"
+                    ikon={<Pencil className="size-4" />}
+                  >
+                    Ubah
+                  </Button>
+                  <Button
+                    variasi="halus"
+                    onClick={() => {
+                      setGalat(null)
+                      setAlasan('')
+                      setDetail(null)
+                      setAkanTolak(detail)
+                    }}
+                    className="text-alfa"
+                    ikon={<X className="size-4" />}
+                  >
+                    Tolak
+                  </Button>
+                </>
               ) : (
                 <span className="sm:mr-auto" />
               )}
@@ -474,6 +511,7 @@ export function LaporanPage() {
           />
         </div>
       </Modal>
+      <UbahLaporanDialog laporan={edit} onTutup={() => setEdit(null)} />
     </div>
   )
 }

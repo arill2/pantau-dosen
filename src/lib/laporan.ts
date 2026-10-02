@@ -109,6 +109,42 @@ export function useLaporan() {
   })
 }
 
+export interface InputUbahLaporan {
+  id: string
+  namaKetua: string
+  penugasanId: string
+  minggu: number
+  tanggal: string
+  waktu: string
+  dosenHadir: boolean
+  catatan: string
+  dokumentasi: string
+}
+
+/** Admin mengubah laporan ketua kelas (hanya status 'baru'). */
+export function useUbahLaporan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: InputUbahLaporan) => {
+      pastikanSiap()
+      const { error } = await supabase.rpc('lapor_admin_ubah', {
+        p_id: input.id,
+        p_nama_ketua: input.namaKetua,
+        p_penugasan: input.penugasanId,
+        p_minggu: input.minggu,
+        p_tanggal: input.tanggal,
+        p_waktu: input.waktu || null,
+        p_dosen_hadir: input.dosenHadir,
+        p_catatan: input.catatan || null,
+        p_dokumentasi: input.dokumentasi || null,
+      })
+      if (error) throw new Error(pesan(error.message))
+    },
+    onSuccess: () =>
+      void qc.invalidateQueries({ queryKey: KUNCI_QUERY.laporan }),
+  })
+}
+
 export function useTolakLaporan() {
   const qc = useQueryClient()
   return useMutation({
