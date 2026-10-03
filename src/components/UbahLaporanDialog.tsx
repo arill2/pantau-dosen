@@ -6,10 +6,11 @@ import { InlineError } from '@/components/ui/Feedback'
 import { useToast } from '@/components/ui/Toast'
 import { laporDaftarKelas, useUbahLaporan } from '@/lib/laporan'
 import { pesanError } from '@/lib/api'
+import { TOTAL_MINGGU } from '@/lib/attendance'
 import { namaMetode } from '@/lib/format'
 import type { DaftarLapor, Laporan } from '@/lib/types'
 
-const MINGGU = Array.from({ length: 16 }, (_, i) => i + 1)
+const MINGGU = Array.from({ length: TOTAL_MINGGU }, (_, i) => i + 1)
 
 interface Props {
   laporan: Laporan | null

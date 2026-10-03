@@ -20,10 +20,11 @@ import {
   laporPekanTerisiKelas,
 } from '@/lib/laporan'
 import { INSTANSI } from '@/lib/config'
+import { TOTAL_MINGGU } from '@/lib/attendance'
 import { namaMetode } from '@/lib/format'
 import type { DaftarLapor, KelasOpsi } from '@/lib/types'
 
-const MINGGU = Array.from({ length: 16 }, (_, i) => i + 1)
+const MINGGU = Array.from({ length: TOTAL_MINGGU }, (_, i) => i + 1)
 
 interface Nilai {
   namaKetua: string

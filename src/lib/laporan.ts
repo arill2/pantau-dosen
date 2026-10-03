@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { buka, pastikanSiap } from './api'
 import { KUNCI_QUERY } from './queryClient'
 import { supabase } from './supabase'
-import type { DaftarLapor, KelasOpsi, Laporan, StatusLaporan } from './types'
+import type { DaftarLapor, KelasOpsi, Laporan } from './types'
 
 function pesan(m: string): string {
   const l = m.toLowerCase()
@@ -205,4 +205,3 @@ export function useTerapkanLaporan() {
   })
 }
 
-export type { StatusLaporan }

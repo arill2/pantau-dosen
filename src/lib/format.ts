@@ -63,10 +63,6 @@ export function formatPersen(value: number | null): string {
   })}%`
 }
 
-export function formatAngka(value: number): string {
-  return value.toLocaleString('id-ID')
-}
-
 /** Label yang bisa dibaca untuk nilai status. */
 export const STATUS_LABEL: Record<string, string> = {
   hadir: 'Hadir',

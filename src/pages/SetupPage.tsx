@@ -1,4 +1,6 @@
 import { Database, KeyRound, Rocket } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 const LANGKAH = [
   {
@@ -19,6 +21,9 @@ const LANGKAH = [
 ]
 
 export function SetupPage() {
+  // Bila Supabase sudah dikonfigurasi, halaman ini tidak relevan.
+  if (isSupabaseConfigured) return <Navigate to="/" replace />
+
   return (
     <div className="grid min-h-dvh place-items-center bg-paper px-4 py-10">
       <div className="w-full max-w-xl">

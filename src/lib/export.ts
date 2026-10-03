@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { formatPersen, formatTanggal, namaMetode, STATUS_LABEL, BULAN_SINGKAT } from './format'
+import { formatPersen, formatTanggal, BULAN_SINGKAT } from './format'
 import {
   cocokBulan,
   hitungPerBulan,
@@ -299,8 +299,6 @@ export function eksporPdfBulanan(
 
   doc.save(`rekap-bulanan-${slug(konteks.periodeNama)}.pdf`)
 }
-
-export { KODE_STATUS, STATUS_LABEL, namaMetode }
 
 function slug(value: string): string {
   return value

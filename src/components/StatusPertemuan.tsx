@@ -53,15 +53,3 @@ export const URUTAN_STATUS: StatusPertemuan[] = [
   'pengganti',
   'belum',
 ]
-
-export function StatusPill({ status }: { status: StatusPertemuan }) {
-  const meta = STATUS_META[status]
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${meta.latar} ${meta.teks}`}
-    >
-      <span aria-hidden="true">{meta.tanda}</span>
-      {meta.label}
-    </span>
-  )
-}

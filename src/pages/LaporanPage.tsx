@@ -260,15 +260,17 @@ export function LaporanPage() {
                               >
                                 Ubah
                               </Button>
-                              <Button
-                                ukuran="sm"
-                                variasi="utama"
-                                disabled={terapkan.isPending}
-                                onClick={() => void terapkanKeRekap(l)}
-                                ikon={<Check className="size-3.5" />}
-                              >
-                                Terima
-                              </Button>
+                              {l.penugasan_id && l.minggu_ke !== null ? (
+                                <Button
+                                  ukuran="sm"
+                                  variasi="utama"
+                                  disabled={terapkan.isPending}
+                                  onClick={() => void terapkanKeRekap(l)}
+                                  ikon={<Check className="size-3.5" />}
+                                >
+                                  Terima
+                                </Button>
+                              ) : null}
                               <Button
                                 ukuran="sm"
                                 variasi="halus"
@@ -336,15 +338,17 @@ export function LaporanPage() {
                       >
                         Ubah
                       </Button>
-                      <Button
-                        ukuran="sm"
-                        variasi="utama"
-                        disabled={terapkan.isPending}
-                        onClick={() => void terapkanKeRekap(l)}
-                        ikon={<Check className="size-3.5" />}
-                      >
-                        Terima
-                      </Button>
+                      {l.penugasan_id && l.minggu_ke !== null ? (
+                        <Button
+                          ukuran="sm"
+                          variasi="utama"
+                          disabled={terapkan.isPending}
+                          onClick={() => void terapkanKeRekap(l)}
+                          ikon={<Check className="size-3.5" />}
+                        >
+                          Terima
+                        </Button>
+                      ) : null}
                       <Button
                         ukuran="sm"
                         variasi="halus"
