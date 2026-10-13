@@ -68,7 +68,7 @@ export function eksporExcel(
 
   const info = XLSX.utils.aoa_to_sheet([
     ['Rekap Monitoring Pembelajaran'],
-    [`Periode: ${konteks.periodeNama}`],
+    [`TAHUN AJARAN: ${konteks.periodeNama}`],
     [`Bulan: ${konteks.bulanLabel}`],
     ['H = Hadir, TH = Tidak hadir, I = Izin, P = Pengganti, - = Belum terlaksana'],
   ])
@@ -94,7 +94,7 @@ export function eksporPdf(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(90)
-  doc.text(`Periode: ${konteks.periodeNama}`, 40, 58)
+  doc.text(`TAHUN AJARAN: ${konteks.periodeNama}`, 40, 58)
   doc.text(`Bulan: ${konteks.bulanLabel}`, 40, 70)
   doc.text(
     persentaseRata === null
@@ -107,11 +107,11 @@ export function eksporPdf(
   const head = [
     'Dosen',
     'Mata Kuliah',
-    'Kelas',
+    'N 1 A - N 1 O',
     'T/P',
     ...Array.from({ length: TOTAL_MINGGU }, (_, i) => String(i + 1)),
-    'Total',
-    '%',
+    'TOTAL PERTEMUAN',
+    'PERSENTASE %',
   ]
 
   const body = baris.map((item) => {
@@ -140,17 +140,17 @@ export function eksporPdf(
     alternateRowStyles: { fillColor: [247, 244, 239] },
     columnStyles: {
       0: { cellWidth: 95 },
-      1: { cellWidth: 105 },
-      2: { cellWidth: 55 },
+      1: { cellWidth: 95 },
+      2: { cellWidth: 62 },
       3: { cellWidth: 24, halign: 'center' },
       ...Object.fromEntries(
         Array.from({ length: TOTAL_MINGGU }, (_, i) => [
           i + 4,
-          { cellWidth: 18, halign: 'center' },
+          { cellWidth: 17, halign: 'center' },
         ]),
       ),
-      20: { cellWidth: 34, halign: 'center' },
-      21: { cellWidth: 42, halign: 'right' },
+      20: { cellWidth: 58, halign: 'center' },
+      21: { cellWidth: 52, halign: 'center' },
     },
     didDrawPage: () => {
       const page = doc.getNumberOfPages()
@@ -197,7 +197,7 @@ export function eksporExcelBulanan(
   const sheet = XLSX.utils.json_to_sheet(data)
   const info = XLSX.utils.aoa_to_sheet([
     ['Rekap Kehadiran Dosen per Bulan'],
-    [`Periode: ${konteks.periodeNama}`],
+    [`TAHUN AJARAN: ${konteks.periodeNama}`],
     ['Kolom "<Bulan> (%)" = persentase kehadiran pada bulan tersebut.'],
     ['Kolom "<Bulan> Hadir" = jumlah pertemuan hadir pada bulan tersebut.'],
   ])
@@ -228,7 +228,7 @@ export function eksporPdfBulanan(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(90)
-  doc.text(`Periode: ${konteks.periodeNama}`, 40, 58)
+  doc.text(`TAHUN AJARAN: ${konteks.periodeNama}`, 40, 58)
   doc.text(
     persentaseRata === null
       ? 'Rata-rata persentase: –'

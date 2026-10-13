@@ -284,7 +284,7 @@ export function DashboardPage() {
         <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-12">
           <div className="lg:col-span-2">
             <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-periode">
-              Periode
+              Tahun ajaran
             </label>
             <Select id="f-periode" value={periodeId} onChange={(e) => setPeriodeId(e.target.value)}>
               {periode.length === 0 ? <option value="">Belum ada periode</option> : null}
