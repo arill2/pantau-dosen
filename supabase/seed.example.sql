@@ -21,8 +21,8 @@ values
 
 insert into public.kelas (nama, keterangan, aktif)
 values
-  ('Contoh 1A', 'Kelas contoh', true),
-  ('Contoh 1B', 'Kelas contoh', true);
+  ('N 1 A', 'Kelas contoh', true),
+  ('N 1 B', 'Kelas contoh', true);
 
 insert into public.penugasan (dosen_id, mata_kuliah_id, periode_id, kelas_id, metode)
 select d.id, m.id, p.id, k.id, m.metode_default
@@ -33,7 +33,7 @@ cross join public.kelas k
 where p.aktif
   and d.nidn in ('0000000001', '0000000002')
   and m.kode in ('CONTOH1', 'CONTOH2')
-  and k.nama = 'Contoh 1A';
+  and k.nama = 'N 1 A';
 
 -- Buat 16 pertemuan berstatus "belum" untuk tiap penugasan.
 insert into public.pertemuan (penugasan_id, minggu_ke, status)

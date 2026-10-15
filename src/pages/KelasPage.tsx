@@ -237,7 +237,7 @@ export function KelasPage() {
                   value={form.nama}
                   autoFocus
                   onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                  placeholder="cth. Kelas 1A"
+                  placeholder="cth. N 1 A"
                 />
               )}
             </Field>
@@ -295,7 +295,7 @@ export function KelasPage() {
                   autoCapitalize="none"
                   spellCheck={false}
                   onChange={(e) => setForm({ ...form, kode_akses: e.target.value })}
-                  placeholder="mis. kelas-1a"
+                  placeholder="mis. n-1-a"
                 />
               )}
             </Field>
