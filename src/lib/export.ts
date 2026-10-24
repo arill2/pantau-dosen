@@ -1,13 +1,11 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
-import { formatPersen, formatTanggal, BULAN_SINGKAT } from './format'
+import { formatPersen, formatTanggal } from './format'
 import {
   cocokBulan,
-  hitungPerBulan,
-  hitungRekap,
   TOTAL_MINGGU,
-  type AturanHitung,
+  type BarisTanggal,
   type FilterBulan,
 } from './attendance'
 import type { RekapBaris, StatusPertemuan } from './types'
@@ -18,6 +16,14 @@ const KODE_STATUS: Record<StatusPertemuan, string> = {
   belum: '-',
   izin: 'I',
   pengganti: 'P',
+}
+
+const LABEL_STATUS: Record<StatusPertemuan, string> = {
+  hadir: 'Hadir',
+  tidak_hadir: 'Tidak hadir',
+  belum: 'Belum terlaksana',
+  izin: 'Izin',
+  pengganti: 'Pengganti',
 }
 
 interface Konteks {
@@ -167,72 +173,76 @@ export function eksporPdf(
   doc.save(`rekap-${slug(konteks.periodeNama)}-${slug(konteks.bulanLabel)}.pdf`)
 }
 
-export function eksporExcelBulanan(
-  baris: RekapBaris[],
-  bulanList: number[],
-  konteks: Konteks,
-  aturan: AturanHitung,
+// ---------------------------------------------------------------------------
+// Ekspor per tanggal
+// ---------------------------------------------------------------------------
+interface KonteksTanggal {
+  periodeNama: string
+}
+
+export function eksporExcelTanggal(
+  baris: BarisTanggal[],
+  tanggal: string,
+  konteks: KonteksTanggal,
 ) {
-  const data = baris.map((item) => {
-    const row: Record<string, string | number> = {
-      Dosen: item.dosen?.nama ?? '–',
-      'Mata Kuliah': item.mata_kuliah
-        ? `${item.mata_kuliah.kode} · ${item.mata_kuliah.nama}`
-        : '–',
-      Kelas: item.kelas?.nama ?? '–',
-      Metode: item.metode === 'T' ? 'Teori' : 'Praktik',
-    }
-    for (const r of hitungPerBulan(item, bulanList, aturan)) {
-      const label = BULAN_SINGKAT[r.bulan]
-      row[`${label} Hadir`] = r.adaData ? r.totalHadir : ''
-      row[`${label} (%)`] =
-        r.adaData && r.persentase !== null ? r.persentase : ''
-    }
-    const total = hitungRekap(item, 'semua', aturan)
-    row['Total Hadir'] = total.totalHadir
-    row['Persentase (%)'] = total.persentase ?? ''
-    return row
-  })
+  const data = baris.map(({ penugasan, pertemuan }) => ({
+    Dosen: penugasan.dosen?.nama ?? '–',
+    'Mata Kuliah': penugasan.mata_kuliah
+      ? `${penugasan.mata_kuliah.kode} · ${penugasan.mata_kuliah.nama}`
+      : '–',
+    Kelas: penugasan.kelas?.nama ?? '–',
+    Metode: penugasan.metode === 'T' ? 'Teori' : 'Praktik',
+    Pekan: pertemuan.minggu_ke,
+    Tanggal: formatTanggal(pertemuan.tanggal),
+    Status: LABEL_STATUS[pertemuan.status],
+    Catatan: pertemuan.catatan ?? '',
+  }))
 
   const sheet = XLSX.utils.json_to_sheet(data)
+  sheet['!cols'] = [
+    { wch: 26 },
+    { wch: 30 },
+    { wch: 14 },
+    { wch: 9 },
+    { wch: 7 },
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 40 },
+  ]
+
   const info = XLSX.utils.aoa_to_sheet([
-    ['Rekap Kehadiran Dosen per Bulan'],
+    ['Rekap Kehadiran Dosen per Tanggal'],
     [`TAHUN AJARAN: ${konteks.periodeNama}`],
-    ['Kolom "<Bulan> (%)" = persentase kehadiran pada bulan tersebut.'],
-    ['Kolom "<Bulan> Hadir" = jumlah pertemuan hadir pada bulan tersebut.'],
+    [`Tanggal: ${formatTanggal(tanggal)}`],
+    ['H = Hadir, TH = Tidak hadir, I = Izin, P = Pengganti, - = Belum terlaksana'],
   ])
 
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, info, 'Info')
-  XLSX.utils.book_append_sheet(wb, sheet, 'Rekap Bulanan')
-  XLSX.writeFile(wb, `rekap-bulanan-${slug(konteks.periodeNama)}.xlsx`)
+  XLSX.utils.book_append_sheet(wb, sheet, 'Rekap Tanggal')
+  XLSX.writeFile(
+    wb,
+    `rekap-${slug(konteks.periodeNama)}-${slug(tanggal)}.xlsx`,
+  )
 }
 
-export function eksporPdfBulanan(
-  baris: RekapBaris[],
-  bulanList: number[],
-  konteks: Konteks,
-  aturan: AturanHitung,
-  persentaseRata: number | null,
+export function eksporPdfTanggal(
+  baris: BarisTanggal[],
+  tanggal: string,
+  konteks: KonteksTanggal,
 ) {
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'pt',
-    format: bulanList.length > 7 ? 'a3' : 'a4',
-  })
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(15)
-  doc.text('Rekap Kehadiran Dosen per Bulan', 40, 42)
+  doc.text('Rekap Kehadiran Dosen per Tanggal', 40, 42)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(90)
   doc.text(`TAHUN AJARAN: ${konteks.periodeNama}`, 40, 58)
   doc.text(
-    persentaseRata === null
-      ? 'Rata-rata persentase: –'
-      : `Rata-rata persentase keseluruhan: ${formatPersen(persentaseRata)}`,
+    `Tanggal: ${formatTanggal(tanggal)} · ${baris.length} pertemuan`,
     40,
     70,
   )
@@ -242,48 +252,41 @@ export function eksporPdfBulanan(
     'Mata Kuliah',
     'Kelas',
     'T/P',
-    ...bulanList.map((b) => BULAN_SINGKAT[b]),
-    'Total',
+    'Pekan',
+    'Status',
+    'Catatan',
   ]
 
-  const body = baris.map((item) => {
-    const per = hitungPerBulan(item, bulanList, aturan)
-    const total = hitungRekap(item, 'semua', aturan)
-    return [
-      item.dosen?.nama ?? '–',
-      item.mata_kuliah?.nama ?? '–',
-      item.kelas?.nama ?? '–',
-      item.metode,
-      ...per.map((r) =>
-        r.adaData
-          ? `${formatPersen(r.persentase)} (${r.totalHadir}/${r.totalDihitung})`
-          : '–',
-      ),
-      `${formatPersen(total.persentase)} (${total.totalHadir}/${total.totalDihitung})`,
-    ]
-  })
+  const body = baris.map(({ penugasan, pertemuan }) => [
+    penugasan.dosen?.nama ?? '–',
+    penugasan.mata_kuliah?.nama ?? '–',
+    penugasan.kelas?.nama ?? '–',
+    penugasan.metode,
+    String(pertemuan.minggu_ke),
+    LABEL_STATUS[pertemuan.status],
+    pertemuan.catatan ?? '–',
+  ])
 
   autoTable(doc, {
     head: [head],
     body,
     startY: 84,
     styles: {
-      fontSize: 7,
-      cellPadding: 3,
+      fontSize: 8,
+      cellPadding: 4,
       lineColor: [210, 205, 195],
       lineWidth: 0.4,
     },
-    headStyles: { fillColor: [178, 58, 30], textColor: 255, fontSize: 7 },
+    headStyles: { fillColor: [178, 58, 30], textColor: 255, fontSize: 8 },
     alternateRowStyles: { fillColor: [247, 244, 239] },
     columnStyles: {
-      0: { cellWidth: 100 },
-      1: { cellWidth: 110 },
-      2: { cellWidth: 55 },
-      3: { cellWidth: 24, halign: 'center' },
-      ...Object.fromEntries(
-        bulanList.map((_, i) => [i + 4, { cellWidth: 70, halign: 'center' }]),
-      ),
-      [bulanList.length + 4]: { cellWidth: 84, halign: 'right' },
+      0: { cellWidth: 115 },
+      1: { cellWidth: 140 },
+      2: { cellWidth: 65 },
+      3: { cellWidth: 30, halign: 'center' },
+      4: { cellWidth: 42, halign: 'center' },
+      5: { cellWidth: 75 },
+      6: { cellWidth: 290 },
     },
     didDrawPage: () => {
       const page = doc.getNumberOfPages()
@@ -297,7 +300,7 @@ export function eksporPdfBulanan(
     },
   })
 
-  doc.save(`rekap-bulanan-${slug(konteks.periodeNama)}.pdf`)
+  doc.save(`rekap-${slug(konteks.periodeNama)}-${slug(tanggal)}.pdf`)
 }
 
 function slug(value: string): string {

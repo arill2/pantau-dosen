@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Confirm } from '@/components/ui/Confirm'
 import { InlineError } from '@/components/ui/Feedback'
 import { MasterTable, type Kolom } from '@/components/MasterTable'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { Toolbar } from '@/components/Toolbar'
 import { StatusAktif } from '@/components/StatusAktif'
 import { useToast } from '@/components/ui/Toast'
@@ -52,15 +53,15 @@ export function KelasPage() {
     {
       judul: 'Nama kelas',
       utama: true,
-      render: (k) => <span className="font-semibold text-ink">{k.nama}</span>,
+      render: (k, indeks) => (
+        <DenganNomorUrut nomor={indeks + 1}>
+          <span className="font-semibold text-ink">{k.nama}</span>
+        </DenganNomorUrut>
+      ),
     },
     {
-      judul: 'Program / Semester',
-      render: (k) => (
-        <span className="text-ink">
-          {[k.program, k.semester].filter(Boolean).join(' · ') || '–'}
-        </span>
-      ),
+      judul: 'Program',
+      render: (k) => <span className="text-ink">{k.program || '–'}</span>,
     },
     {
       judul: 'Angkatan / Paralel',

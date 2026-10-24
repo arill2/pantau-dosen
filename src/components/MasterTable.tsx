@@ -4,7 +4,7 @@ import { Button } from './ui/Button'
 
 export interface Kolom<T> {
   judul: string
-  render: (row: T) => ReactNode
+  render: (row: T, indeks: number) => ReactNode
   className?: string
   utama?: boolean
   sembunyikanMobile?: boolean
@@ -85,14 +85,14 @@ export function MasterTable<T>({
               </tr>
             </thead>
             <tbody>
-              {hasil.map((row) => (
+              {hasil.map((row, indeks) => (
                 <tr key={barisKunci(row)} className="row-stripe border-t border-line">
                   {kolom.map((k) => (
                     <td
                       key={k.judul}
                       className={`px-4 py-3 align-middle ${k.className ?? ''}`}
                     >
-                      {k.render(row)}
+                      {k.render(row, indeks)}
                     </td>
                   ))}
                 </tr>
@@ -103,7 +103,7 @@ export function MasterTable<T>({
       </div>
 
       <div className="flex flex-col gap-3 lg:hidden">
-        {hasil.map((row) => (
+        {hasil.map((row, indeks) => (
           <article
             key={barisKunci(row)}
             className="rounded-[10px] border border-line bg-surface p-4"
@@ -136,7 +136,7 @@ export function MasterTable<T>({
                           : 'text-right text-[13px] text-ink'
                       }
                     >
-                      {k.render(row)}
+                      {k.render(row, indeks)}
                     </dd>
                   </div>
                 ))}

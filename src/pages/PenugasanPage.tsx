@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Field, Select } from '@/components/ui/Field'
@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Confirm } from '@/components/ui/Confirm'
 import { InlineError } from '@/components/ui/Feedback'
 import { MasterTable, type Kolom } from '@/components/MasterTable'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { Toolbar } from '@/components/Toolbar'
 import { MiniTrack } from '@/components/WeekStrip'
 import { useToast } from '@/components/ui/Toast'
@@ -54,6 +55,26 @@ export function PenugasanPage() {
     kelas.length > 0
   const aktifPeriode = periode.find((p) => p.aktif) ?? periode[0]
 
+  // Urutkan menurut nama dosen agar nomor urut mudah dibaca dan dicari.
+  const dataUrut = useMemo(
+    () =>
+      [...(query.data ?? [])].sort((a, b) => {
+        const namaDosen = (a.dosen?.nama ?? '').localeCompare(
+          b.dosen?.nama ?? '',
+          'id',
+        )
+        if (namaDosen !== 0) return namaDosen
+        const namaMk = (a.mata_kuliah?.nama ?? '').localeCompare(
+          b.mata_kuliah?.nama ?? '',
+          'id',
+        )
+        if (namaMk !== 0) return namaMk
+        return (a.kelas?.nama ?? '').localeCompare(b.kelas?.nama ?? '', 'id')
+      }),
+    [query.data],
+  )
+  const queryTampil = { ...query, data: dataUrut }
+
   function bukaForm() {
     setGalatForm(null)
     setForm({
@@ -69,15 +90,15 @@ export function PenugasanPage() {
     {
       judul: 'Dosen',
       utama: true,
-      render: (p) => <span className="font-semibold text-ink">{p.dosen?.nama ?? '–'}</span>,
+      render: (p, indeks) => (
+        <DenganNomorUrut nomor={indeks + 1}>
+          <span className="font-semibold text-ink">{p.dosen?.nama ?? '–'}</span>
+        </DenganNomorUrut>
+      ),
     },
     {
       judul: 'Mata kuliah',
-      render: (p) => (
-        <span className="text-ink">
-          {p.mata_kuliah ? `${p.mata_kuliah.kode} · ${p.mata_kuliah.nama}` : '–'}
-        </span>
-      ),
+      render: (p) => <span className="text-ink">{p.mata_kuliah?.nama ?? '–'}</span>,
     },
     {
       judul: 'Metode',
@@ -204,11 +225,11 @@ export function PenugasanPage() {
       ) : null}
 
       <MasterTable
-        query={query}
+        query={queryTampil}
         kolom={kolom}
         barisKunci={(p) => p.id}
         saring={(p) =>
-          `${p.dosen?.nama ?? ''} ${p.mata_kuliah?.nama ?? ''} ${p.mata_kuliah?.kode ?? ''} ${p.kelas?.nama ?? ''}`
+          `${p.dosen?.nama ?? ''} ${p.mata_kuliah?.nama ?? ''} ${p.kelas?.nama ?? ''}`
         }
         kataKunci={cari}
         judulKosong="Belum ada penugasan"
@@ -266,7 +287,7 @@ export function PenugasanPage() {
                 >
                   {mataKuliah.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.kode} · {m.nama}
+                      {m.nama}
                       {m.aktif ? '' : ' (nonaktif)'}
                     </option>
                   ))}

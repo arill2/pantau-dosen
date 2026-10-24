@@ -239,6 +239,7 @@ create table if not exists public.laporan (
   tanggal date,
   waktu time,
   dosen_hadir boolean not null,
+  reschedule boolean not null default false,
   catatan text,
   dokumentasi_url text,
   status text not null default 'baru'

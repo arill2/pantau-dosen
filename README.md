@@ -13,12 +13,12 @@ desain pada `DESIGN.md`.
 - Master data: Dosen (dengan kode), Mata Kuliah (SKS Teori/Praktik), Kelas (program, semester, angkatan, paralel), Periode, dan Penugasan (dosen + mata kuliah + kelas + metode + periode).
 - Input pertemuan 1 sampai 16 per penugasan: status, tanggal pelaksanaan, catatan.
 - Tabel rekap dengan kolom 16 pekan, persentase, dan total kehadiran yang dihitung otomatis.
-- Tampilan **Per bulan**: persentase & total kehadiran tiap bulan sekaligus.
-- Filter periode, bulan, dosen, mata kuliah, kelas, dan metode; pencarian dan pengurutan.
+- Tampilan **Per tanggal**: pilih satu tanggal untuk melihat daftar pertemuan (dosen, mata kuliah, kelas, pekan, status) dan mengubah statusnya langsung.
+- Filter periode, bulan (tampilan per pekan), dosen, mata kuliah, kelas, dan metode; pencarian dan pengurutan.
 - Penanda visual untuk persentase di bawah ambang batas.
 - Ekspor Excel (.xlsx) dan PDF (landscape) sesuai filter aktif.
 - Audit log perubahan pertemuan (siapa, kapan, nilai lama dan baru).
-- **Laporan Ketua Kelas**: ketua kelas melaporkan kehadiran dosen lewat halaman publik `/lapor` dengan memilih kelas (tanpa kode); masuk ke log admin (siapa, kelas mana, kapan) dengan verifikasi, **edit sebelum disetujui**, tombol "Terima/Tolak", dan "Terapkan ke rekap". Duplikat pekan dicegah.
+- **Laporan Ketua Kelas**: ketua kelas melaporkan kehadiran dosen lewat halaman publik `/lapor` dengan memilih kelas (tanpa kode); masuk ke log admin (siapa, kelas mana, kapan) dengan verifikasi, **edit sebelum disetujui**, tombol "Terima/Tolak", "Terapkan ke rekap", dan **"Terima semua"** untuk memverifikasi seluruh laporan baru yang tampil sekaligus. Duplikat pekan dicegah.
 - Filter/grup status kehadiran di dashboard admin: Hadir, Tidak hadir, Izin, Pengganti (chip berjumlah, bisa diklik).
 - Tema terang dan gelap, tata letak responsif (desktop, tablet, dan ponsel).
 

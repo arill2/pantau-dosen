@@ -14,7 +14,8 @@ import { Button } from '@/components/ui/Button'
 import { Input, Select } from '@/components/ui/Field'
 import { StateBlock, TableSkeleton } from '@/components/ui/Feedback'
 import { MiniTrack, WeekStrip } from '@/components/WeekStrip'
-import { RekapBulanan } from '@/components/RekapBulanan'
+import { RekapTanggal } from '@/components/RekapTanggal'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { STATUS_META } from '@/components/StatusPertemuan'
 import { PertemuanDialog } from '@/components/PertemuanDialog'
 import { useToast } from '@/components/ui/Toast'
@@ -24,18 +25,25 @@ import { usePengaturan } from '@/contexts/SettingsContext'
 import {
   adaStatus,
   cocokBulan,
-  daftarBulanAktif,
+  daftarPertemuanTanggal,
   hitungRekap,
   rekapStatus,
   ringkasRekap,
+  ringkasTanggal,
   STATUS_URUT,
   TOTAL_MINGGU,
   type FilterBulan,
   type HitungStatus,
   type StatusFilter,
 } from '@/lib/attendance'
-import { formatPersen, NAMA_BULAN, namaMetode } from '@/lib/format'
-import type { RekapBaris, StatusPertemuan } from '@/lib/types'
+import {
+  formatPersen,
+  formatTanggalPanjang,
+  NAMA_BULAN,
+  namaMetode,
+  tanggalHariIni,
+} from '@/lib/format'
+import type { PenugasanLengkap, RekapBaris, StatusPertemuan } from '@/lib/types'
 
 const UKURAN_HALAMAN = 25
 const KELAS_LINK_TOMBOL =
@@ -54,6 +62,7 @@ export function DashboardPage() {
 
   const [periodeId, setPeriodeId] = useState('')
   const [bulan, setBulan] = useState<FilterBulan>('semua')
+  const [tanggal, setTanggal] = useState<string>(tanggalHariIni)
   const [dosenId, setDosenId] = useState('semua')
   const [mkId, setMkId] = useState('semua')
   const [kelasId, setKelasId] = useState('semua')
@@ -65,15 +74,12 @@ export function DashboardPage() {
     arah: 'naik',
   })
   const [halaman, setHalaman] = useState(1)
-  const [dialog, setDialog] = useState<{ baris: RekapBaris; minggu: number } | null>(
-    null,
-  )
+  const [dialog, setDialog] = useState<{
+    baris: PenugasanLengkap
+    minggu: number
+  } | null>(null)
   const [eksporTerbuka, setEksporTerbuka] = useState(false)
-  const [tampilan, setTampilan] = useState<'pekan' | 'bulan'>('pekan')
-
-  // Mode "Per bulan" menampilkan semua bulan sekaligus, jadi filter bulan
-  // tidak berlaku (dihitung sebagai semua bulan).
-  const bulanEfektif: FilterBulan = tampilan === 'bulan' ? 'semua' : bulan
+  const [tampilan, setTampilan] = useState<'pekan' | 'tanggal'>('pekan')
 
   useEffect(() => {
     if (periodeId || periode.length === 0) return
@@ -83,7 +89,18 @@ export function DashboardPage() {
 
   useEffect(() => {
     setHalaman(1)
-  }, [periodeId, bulan, dosenId, mkId, kelasId, metode, statusFilter, cari, tampilan])
+  }, [
+    periodeId,
+    bulan,
+    tanggal,
+    dosenId,
+    mkId,
+    kelasId,
+    metode,
+    statusFilter,
+    cari,
+    tampilan,
+  ])
 
   useEffect(() => {
     if (!eksporTerbuka) return
@@ -107,6 +124,12 @@ export function DashboardPage() {
     })
   }, [rekapQuery.data, periodeId, dosenId, mkId, kelasId, metode])
 
+  // Semua pertemuan pada tanggal terpilih, sebelum filter status/pencarian.
+  const barisTanggal = useMemo(
+    () => daftarPertemuanTanggal(dasar, tanggal),
+    [dasar, tanggal],
+  )
+
   // Ringkasan jumlah tiap status (Hadir/Tidak hadir/Izin/Pengganti), mengikuti
   // filter aktif — dipakai sebagai chip filter yang bisa diklik.
   const statusRingkas = useMemo<HitungStatus>(() => {
@@ -117,8 +140,12 @@ export function DashboardPage() {
       pengganti: 0,
       belum: 0,
     }
+    if (tampilan === 'tanggal') {
+      for (const { pertemuan } of barisTanggal) total[pertemuan.status] += 1
+      return total
+    }
     for (const p of dasar) {
-      const r = rekapStatus(p, bulanEfektif)
+      const r = rekapStatus(p, bulan)
       total.hadir += r.hadir
       total.tidak_hadir += r.tidak_hadir
       total.izin += r.izin
@@ -126,17 +153,15 @@ export function DashboardPage() {
       total.belum += r.belum
     }
     return total
-  }, [dasar, bulanEfektif])
+  }, [dasar, bulan, tampilan, barisTanggal])
 
   const baris = useMemo(() => {
     const hasil =
       statusFilter === 'semua'
         ? dasar
-        : dasar.filter((p) => adaStatus(p, bulanEfektif, statusFilter))
-    return hasil.map((p) => hitungRekap(p, bulanEfektif, aturan))
-  }, [dasar, bulanEfektif, aturan, statusFilter])
-
-  const bulanList = useMemo(() => daftarBulanAktif(baris), [baris])
+        : dasar.filter((p) => adaStatus(p, bulan, statusFilter))
+    return hasil.map((p) => hitungRekap(p, bulan, aturan))
+  }, [dasar, bulan, aturan, statusFilter])
 
   const tersaring = useMemo(() => {
     const q = cari.trim().toLowerCase()
@@ -159,26 +184,66 @@ export function DashboardPage() {
     })
   }, [baris, cari, urut])
 
+  const tersaringTanggal = useMemo(() => {
+    const q = cari.trim().toLowerCase()
+    return barisTanggal
+      .filter(({ penugasan, pertemuan }) => {
+        if (statusFilter !== 'semua' && pertemuan.status !== statusFilter)
+          return false
+        if (!q) return true
+        return (
+          (penugasan.dosen?.nama ?? '').toLowerCase().includes(q) ||
+          (penugasan.mata_kuliah?.nama ?? '').toLowerCase().includes(q) ||
+          (penugasan.mata_kuliah?.kode ?? '').toLowerCase().includes(q) ||
+          (penugasan.kelas?.nama ?? '').toLowerCase().includes(q)
+        )
+      })
+      .sort((a, b) => {
+        const dosen = (a.penugasan.dosen?.nama ?? '').localeCompare(
+          b.penugasan.dosen?.nama ?? '',
+        )
+        if (dosen !== 0) return dosen
+        const mk = (a.penugasan.mata_kuliah?.nama ?? '').localeCompare(
+          b.penugasan.mata_kuliah?.nama ?? '',
+        )
+        if (mk !== 0) return mk
+        return a.pertemuan.minggu_ke - b.pertemuan.minggu_ke
+      })
+  }, [barisTanggal, statusFilter, cari])
+
   const ringkasan = useMemo(
     () => ringkasRekap(tersaring, aturan),
     [tersaring, aturan],
   )
-  const totalHalaman = Math.max(1, Math.ceil(tersaring.length / UKURAN_HALAMAN))
+  const ringkasanTanggal = useMemo(
+    () => ringkasTanggal(tersaringTanggal, aturan.hitungIzinSebagaiHadir),
+    [tersaringTanggal, aturan.hitungIzinSebagaiHadir],
+  )
+  const jumlahAktif =
+    tampilan === 'tanggal' ? tersaringTanggal.length : tersaring.length
+  const totalHalaman = Math.max(1, Math.ceil(jumlahAktif / UKURAN_HALAMAN))
   const halamanAman = Math.min(halaman, totalHalaman)
   const tampilBaris = tersaring.slice(
+    (halamanAman - 1) * UKURAN_HALAMAN,
+    halamanAman * UKURAN_HALAMAN,
+  )
+  const tampilBarisTanggal = tersaringTanggal.slice(
     (halamanAman - 1) * UKURAN_HALAMAN,
     halamanAman * UKURAN_HALAMAN,
   )
 
   const periodeTerpilih = periode.find((p) => p.id === periodeId)
   const bulanLabel = bulan === 'semua' ? 'Semua bulan' : NAMA_BULAN[bulan]
+  const tanggalLabel = tanggal ? formatTanggalPanjang(tanggal) : 'semua tanggal'
+  const hariIni = tanggalHariIni()
   const konteks = {
     periodeNama: periodeTerpilih?.nama ?? 'semua periode',
     bulanLabel,
   }
 
   const adaFilter =
-    bulan !== 'semua' ||
+    (tampilan === 'pekan' && bulan !== 'semua') ||
+    (tampilan === 'tanggal' && tanggal !== hariIni) ||
     dosenId !== 'semua' ||
     mkId !== 'semua' ||
     kelasId !== 'semua' ||
@@ -196,6 +261,7 @@ export function DashboardPage() {
 
   function bersihkanFilter() {
     setBulan('semua')
+    setTanggal(tanggalHariIni())
     setDosenId('semua')
     setMkId('semua')
     setKelasId('semua')
@@ -206,23 +272,17 @@ export function DashboardPage() {
 
   async function jalankanEkspor(jenis: 'excel' | 'pdf') {
     setEksporTerbuka(false)
-    if (tersaring.length === 0) {
+    if (!adaHasil) {
       tampil('Tidak ada data untuk diekspor.', 'info')
       return
     }
     try {
       const mod = await import('@/lib/export')
-      if (tampilan === 'bulan') {
+      if (tampilan === 'tanggal') {
         if (jenis === 'excel') {
-          mod.eksporExcelBulanan(tersaring, bulanList, konteks, aturan)
+          mod.eksporExcelTanggal(tersaringTanggal, tanggal, konteks)
         } else {
-          mod.eksporPdfBulanan(
-            tersaring,
-            bulanList,
-            konteks,
-            aturan,
-            ringkasan.rataPersentase,
-          )
+          mod.eksporPdfTanggal(tersaringTanggal, tanggal, konteks)
         }
       } else if (jenis === 'excel') {
         mod.eksporExcel(tersaring, bulan, konteks)
@@ -239,7 +299,7 @@ export function DashboardPage() {
   }
 
   const belumAdaData = (rekapQuery.data?.length ?? 0) === 0
-  const adaHasil = tersaring.length > 0
+  const adaHasil = jumlahAktif > 0
 
   return (
     <div className="flex flex-col gap-5">
@@ -256,7 +316,7 @@ export function DashboardPage() {
             {(
               [
                 ['pekan', 'Per pekan'],
-                ['bulan', 'Per bulan'],
+                ['tanggal', 'Per tanggal'],
               ] as const
             ).map(([nilai, label]) => (
               <button
@@ -275,8 +335,8 @@ export function DashboardPage() {
             ))}
           </div>
           <p className="text-[11px] text-muted">
-            {tampilan === 'bulan'
-              ? 'Persentase & total tiap bulan dalam satu tabel.'
+            {tampilan === 'tanggal'
+              ? 'Daftar pertemuan pada tanggal terpilih; klik Ubah untuk mengoreksi.'
               : 'Status 16 pekan; klik sel untuk mengubah.'}
           </p>
         </div>
@@ -298,25 +358,47 @@ export function DashboardPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <label className="mb-1 block text-[11px] font-semibold text-muted" htmlFor="f-bulan">
-              Bulan
-            </label>
-            <Select
-              id="f-bulan"
-              value={bulan === 'semua' ? 'semua' : String(bulan)}
-              disabled={tampilan === 'bulan'}
-              className="disabled:cursor-not-allowed disabled:opacity-55"
-              onChange={(e) =>
-                setBulan(e.target.value === 'semua' ? 'semua' : Number(e.target.value))
-              }
-            >
-              <option value="semua">Semua bulan</option>
-              {NAMA_BULAN.map((nama, i) => (
-                <option key={nama} value={i}>
-                  {nama}
-                </option>
-              ))}
-            </Select>
+            {tampilan === 'tanggal' ? (
+              <>
+                <label
+                  className="mb-1 block text-[11px] font-semibold text-muted"
+                  htmlFor="f-tanggal"
+                >
+                  Tanggal
+                </label>
+                <Input
+                  id="f-tanggal"
+                  type="date"
+                  value={tanggal}
+                  onChange={(e) => setTanggal(e.target.value)}
+                />
+              </>
+            ) : (
+              <>
+                <label
+                  className="mb-1 block text-[11px] font-semibold text-muted"
+                  htmlFor="f-bulan"
+                >
+                  Bulan
+                </label>
+                <Select
+                  id="f-bulan"
+                  value={bulan === 'semua' ? 'semua' : String(bulan)}
+                  onChange={(e) =>
+                    setBulan(
+                      e.target.value === 'semua' ? 'semua' : Number(e.target.value),
+                    )
+                  }
+                >
+                  <option value="semua">Semua bulan</option>
+                  {NAMA_BULAN.map((nama, i) => (
+                    <option key={nama} value={i}>
+                      {nama}
+                    </option>
+                  ))}
+                </Select>
+              </>
+            )}
           </div>
 
           <div className="lg:col-span-2">
@@ -449,10 +531,10 @@ export function DashboardPage() {
         <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted">
           <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden="true" />
           <span>
-            {tampilan === 'bulan'
-              ? bulanList.length > 0
-                ? `Persentase & total per bulan untuk ${bulanList.length} bulan yang memiliki pertemuan.`
-                : 'Belum ada pertemuan bertanggal untuk dihitung per bulan.'
+            {tampilan === 'tanggal'
+              ? tanggal
+                ? `Menampilkan pertemuan pada ${tanggalLabel}. Gunakan filter di atas untuk mempersempit daftar.`
+                : 'Pilih tanggal untuk melihat pertemuan pada hari itu.'
               : bulan === 'semua'
                 ? 'Menghitung seluruh pekan pada periode terpilih.'
                 : `Hanya pekan bertanggal ${bulanLabel} yang ditampilkan dan dihitung.`}
@@ -461,17 +543,41 @@ export function DashboardPage() {
       </section>
 
       <section aria-label="Ringkasan rekap" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <RingkasanKartu label="Penugasan" nilai={String(ringkasan.jumlahPenugasan)} />
-        <RingkasanKartu label="Dosen" nilai={String(ringkasan.jumlahDosen)} />
-        <RingkasanKartu
-          label="Rata-rata kehadiran"
-          nilai={formatPersen(ringkasan.rataPersentase)}
-        />
-        <RingkasanKartu
-          label={`Di bawah ${aturan.ambang}%`}
-          nilai={String(ringkasan.diBawahAmbang)}
-          perhatian={ringkasan.diBawahAmbang > 0}
-        />
+        {tampilan === 'tanggal' ? (
+          <>
+            <RingkasanKartu
+              label="Pertemuan"
+              nilai={String(ringkasanTanggal.jumlahPertemuan)}
+            />
+            <RingkasanKartu label="Dosen" nilai={String(ringkasanTanggal.jumlahDosen)} />
+            <RingkasanKartu
+              label="Kehadiran"
+              nilai={formatPersen(ringkasanTanggal.persentaseHadir)}
+            />
+            <RingkasanKartu
+              label="Belum dicatat"
+              nilai={String(ringkasanTanggal.belum)}
+              perhatian={ringkasanTanggal.belum > 0}
+            />
+          </>
+        ) : (
+          <>
+            <RingkasanKartu
+              label="Penugasan"
+              nilai={String(ringkasan.jumlahPenugasan)}
+            />
+            <RingkasanKartu label="Dosen" nilai={String(ringkasan.jumlahDosen)} />
+            <RingkasanKartu
+              label="Rata-rata kehadiran"
+              nilai={formatPersen(ringkasan.rataPersentase)}
+            />
+            <RingkasanKartu
+              label={`Di bawah ${aturan.ambang}%`}
+              nilai={String(ringkasan.diBawahAmbang)}
+              perhatian={ringkasan.diBawahAmbang > 0}
+            />
+          </>
+        )}
       </section>
 
       <section
@@ -483,13 +589,22 @@ export function DashboardPage() {
             Kelompokkan status
           </span>
           <span className="text-[11px] text-muted">
-            · {tampilan === 'bulan' ? 'semua bulan' : bulan === 'semua' ? 'semua bulan' : NAMA_BULAN[bulan]}
+            ·{' '}
+            {tampilan === 'tanggal'
+              ? tanggalLabel
+              : bulan === 'semua'
+                ? 'semua bulan'
+                : NAMA_BULAN[bulan]}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusChip
             label="Semua"
-            jumlah={ringkasan.jumlahPenugasan}
+            jumlah={
+              tampilan === 'tanggal'
+                ? ringkasanTanggal.jumlahPertemuan
+                : ringkasan.jumlahPenugasan
+            }
             aktif={statusFilter === 'semua'}
             onClick={() => setStatusFilter('semua')}
           />
@@ -513,9 +628,11 @@ export function DashboardPage() {
         </div>
         {statusFilter !== 'semua' ? (
           <p className="mt-2.5 text-[11px] text-muted">
-            Menampilkan penugasan yang memiliki minimal satu pertemuan berstatus{' '}
-            <strong className="text-ink">{STATUS_META[statusFilter].label}</strong> pada
-            periode/bulan terpilih.
+            Menampilkan{' '}
+            {tampilan === 'tanggal' ? 'pertemuan' : 'penugasan yang memiliki minimal satu pertemuan'}{' '}
+            berstatus{' '}
+            <strong className="text-ink">{STATUS_META[statusFilter].label}</strong>{' '}
+            {tampilan === 'tanggal' ? 'pada tanggal terpilih' : 'pada periode/bulan terpilih'}.
           </p>
         ) : null}
       </section>
@@ -541,18 +658,33 @@ export function DashboardPage() {
         />
       ) : !adaHasil ? (
         <StateBlock
-          judul="Tidak ada hasil"
-          pesan="Tidak ada penugasan yang cocok dengan filter aktif."
-          aksi={<Button onClick={bersihkanFilter}>Reset filter</Button>}
+          judul={
+            tampilan === 'tanggal' && !tanggal ? 'Pilih tanggal' : 'Tidak ada hasil'
+          }
+          pesan={
+            tampilan === 'tanggal'
+              ? !tanggal
+                ? 'Tentukan tanggal untuk melihat daftar pertemuan pada hari tersebut.'
+                : `Tidak ada pertemuan pada ${tanggalLabel} yang cocok dengan filter aktif.`
+              : 'Tidak ada penugasan yang cocok dengan filter aktif.'
+          }
+          aksi={
+            tampilan === 'tanggal' && !tanggal ? (
+              <Button onClick={() => setTanggal(hariIni)}>Lihat hari ini</Button>
+            ) : (
+              <Button onClick={bersihkanFilter}>Reset filter</Button>
+            )
+          }
         />
       ) : (
         <>
-          {tampilan === 'bulan' ? (
-            <RekapBulanan
-              baris={tampilBaris}
-              bulanList={bulanList}
-              aturan={aturan}
-              onBukaPekan={() => setTampilan('pekan')}
+          {tampilan === 'tanggal' ? (
+            <RekapTanggal
+              baris={tampilBarisTanggal}
+              mulai={(halamanAman - 1) * UKURAN_HALAMAN}
+              onPilih={(penugasan, minggu) =>
+                setDialog({ baris: penugasan, minggu })
+              }
             />
           ) : (
             <>
@@ -604,10 +736,11 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tampilBaris.map((b) => (
+                  {tampilBaris.map((b, i) => (
                     <BarisTabel
                       key={b.id}
                       baris={b}
+                      nomor={(halamanAman - 1) * UKURAN_HALAMAN + i + 1}
                       bulan={bulan}
                       ambang={aturan.ambang}
                       onPilih={(m) => setDialog({ baris: b, minggu: m })}
@@ -619,10 +752,11 @@ export function DashboardPage() {
           </div>
 
           <div className="flex flex-col gap-3 lg:hidden">
-            {tampilBaris.map((b) => (
+            {tampilBaris.map((b, i) => (
               <KartuRekap
                 key={b.id}
                 baris={b}
+                nomor={(halamanAman - 1) * UKURAN_HALAMAN + i + 1}
                 ambang={aturan.ambang}
                 onPilih={(m) => setDialog({ baris: b, minggu: m })}
               />
@@ -632,23 +766,82 @@ export function DashboardPage() {
           )}
 
           {totalHalaman > 1 ? (
-            <nav aria-label="Navigasi halaman" className="flex items-center justify-between gap-3">
+            <nav
+              aria-label="Navigasi halaman"
+              className="flex flex-col gap-3 border-t border-line pt-3 sm:flex-row sm:items-center sm:justify-between"
+            >
               <p className="tnum text-[13px] text-muted">
-                {tersaring.length} baris · halaman {halamanAman} dari {totalHalaman}
+                Menampilkan {(halamanAman - 1) * UKURAN_HALAMAN + 1}–
+                {Math.min(halamanAman * UKURAN_HALAMAN, jumlahAktif)} dari{' '}
+                {jumlahAktif} {tampilan === 'tanggal' ? 'pertemuan' : 'baris'} ·
+                halaman {halamanAman} dari {totalHalaman}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   ukuran="sm"
                   onClick={() => setHalaman((h) => Math.max(1, h - 1))}
                   disabled={halamanAman <= 1}
                   ikon={<ChevronLeft className="size-4" />}
+                  aria-label="Halaman sebelumnya"
                 >
                   Sebelumnya
                 </Button>
+
+                <div
+                  role="group"
+                  aria-label="Nomor halaman"
+                  className="hidden items-center gap-1 sm:flex"
+                >
+                  {daftarHalaman(halamanAman, totalHalaman).map((n, i) =>
+                    n === 'jeda' ? (
+                      <span
+                        key={`jeda-${i}`}
+                        aria-hidden="true"
+                        className="grid min-w-6 place-items-center text-[13px] text-muted"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setHalaman(n)}
+                        aria-label={`Buka halaman ${n}`}
+                        aria-current={n === halamanAman ? 'page' : undefined}
+                        className={`tnum grid min-h-11 min-w-11 place-items-center rounded-[6px] border text-[13px] font-semibold transition-colors duration-150 sm:min-h-9 sm:min-w-9 ${
+                          n === halamanAman
+                            ? 'border-brand bg-brand text-on-brand'
+                            : 'border-line-strong bg-surface text-ink hover:bg-surface-2'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    ),
+                  )}
+                </div>
+
+                <label className="flex items-center gap-1.5 text-[13px] text-muted">
+                  <span className="hidden sm:inline">Ke halaman</span>
+                  <Select
+                    aria-label="Pilih halaman"
+                    value={halamanAman}
+                    onChange={(e) => setHalaman(Number(e.target.value))}
+                    className="tnum w-20 sm:min-h-9"
+                  >
+                    {Array.from({ length: totalHalaman }, (_, i) => (
+                      <option key={i} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="hidden sm:inline">dari {totalHalaman}</span>
+                </label>
+
                 <Button
                   ukuran="sm"
                   onClick={() => setHalaman((h) => Math.min(totalHalaman, h + 1))}
                   disabled={halamanAman >= totalHalaman}
+                  aria-label="Halaman berikutnya"
                 >
                   Berikutnya
                   <ChevronRight className="size-4" />
@@ -770,13 +963,58 @@ function TombolUrut({
   )
 }
 
+/**
+ * Nomor halaman yang ditampilkan di footer: halaman pertama, sekitar halaman
+ * aktif, dan halaman terakhir. Halaman yang dilewati ditandai "jeda".
+ */
+function daftarHalaman(aktif: number, total: number): Array<number | 'jeda'> {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1)
+  }
+
+  const nomor = new Set<number>([
+    1,
+    total,
+    aktif - 2,
+    aktif - 1,
+    aktif,
+    aktif + 1,
+    aktif + 2,
+  ])
+  if (aktif <= 3) {
+    nomor.add(2)
+    nomor.add(3)
+    nomor.add(4)
+  }
+  if (aktif >= total - 2) {
+    nomor.add(total - 1)
+    nomor.add(total - 2)
+    nomor.add(total - 3)
+  }
+
+  const urut = [...nomor]
+    .filter((n) => n >= 1 && n <= total)
+    .sort((a, b) => a - b)
+
+  const hasil: Array<number | 'jeda'> = []
+  let sebelumnya: number | null = null
+  for (const n of urut) {
+    if (sebelumnya !== null && n - sebelumnya > 1) hasil.push('jeda')
+    hasil.push(n)
+    sebelumnya = n
+  }
+  return hasil
+}
+
 function BarisTabel({
   baris,
+  nomor,
   bulan,
   ambang,
   onPilih,
 }: {
   baris: RekapBaris
+  nomor: number
   bulan: FilterBulan
   ambang: number
   onPilih: (minggu: number) => void
@@ -787,12 +1025,18 @@ function BarisTabel({
   return (
     <tr className="row-stripe border-t border-line align-middle">
       <th scope="row" className="sticky left-0 z-10 bg-surface px-4 py-2.5 text-left font-semibold">
-        <span className="block max-w-52 truncate">{baris.dosen?.nama ?? '–'}</span>
-        {baris.dosen?.nidn ? (
-          <span className="tnum block text-[11px] font-normal text-muted">
-            {baris.dosen.nidn}
+        <DenganNomorUrut nomor={nomor}>
+          <span className="min-w-0">
+            <span className="block max-w-52 truncate">
+              {baris.dosen?.nama ?? '–'}
+            </span>
+            {baris.dosen?.nidn ? (
+              <span className="tnum block text-[11px] font-normal text-muted">
+                {baris.dosen.nidn}
+              </span>
+            ) : null}
           </span>
-        ) : null}
+        </DenganNomorUrut>
       </th>
       <td className="px-4 py-2.5">
         <span className="block max-w-56 truncate">{baris.mata_kuliah?.nama ?? '–'}</span>
@@ -873,10 +1117,12 @@ function SelPekan({
 
 function KartuRekap({
   baris,
+  nomor,
   ambang,
   onPilih,
 }: {
   baris: RekapBaris
+  nomor: number
   ambang: number
   onPilih: (minggu: number) => void
 }) {
@@ -885,7 +1131,13 @@ function KartuRekap({
     <article className="rounded-[10px] border border-line bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate font-bold text-ink">{baris.dosen?.nama ?? '–'}</h3>
+          <h3 className="truncate font-bold text-ink">
+            <DenganNomorUrut nomor={nomor}>
+              <span className="min-w-0 truncate">
+                {baris.dosen?.nama ?? '–'}
+              </span>
+            </DenganNomorUrut>
+          </h3>
           <p className="truncate text-[13px] text-muted">
             {baris.mata_kuliah?.kode} · {baris.mata_kuliah?.nama}
           </p>

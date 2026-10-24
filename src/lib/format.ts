@@ -47,6 +47,22 @@ export function formatTanggalSingkat(value: string | null | undefined): string {
   return `${date.getDate()} ${BULAN_SINGKAT[date.getMonth()]}`
 }
 
+/** Tanggal lengkap tanpa nama hari, mis. "5 Oktober 2026". */
+export function formatTanggalPanjang(value: string | null | undefined): string {
+  if (!value) return '–'
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return '–'
+  return `${date.getDate()} ${BULAN[date.getMonth()]} ${date.getFullYear()}`
+}
+
+/** Tanggal lokal hari ini dalam format ISO yyyy-mm-dd untuk input tanggal. */
+export function tanggalHariIni(): string {
+  const date = new Date()
+  const bulan = String(date.getMonth() + 1).padStart(2, '0')
+  const hari = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${bulan}-${hari}`
+}
+
 /** Bulan (0-11) dari string tanggal ISO, atau null. */
 export function bulanDariTanggal(value: string | null | undefined): number | null {
   if (!value) return null

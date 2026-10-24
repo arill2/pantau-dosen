@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Confirm } from '@/components/ui/Confirm'
 import { InlineError } from '@/components/ui/Feedback'
 import { MasterTable, type Kolom } from '@/components/MasterTable'
+import { NomorUrut } from '@/components/NomorUrut'
 import { Toolbar } from '@/components/Toolbar'
 import { StatusAktif } from '@/components/StatusAktif'
 import { useToast } from '@/components/ui/Toast'
@@ -49,6 +50,11 @@ export function MataKuliahPage() {
   const [galatHapus, setGalatHapus] = useState<string | null>(null)
 
   const kolom: Kolom<MataKuliah>[] = [
+    {
+      judul: 'No',
+      className: 'w-14',
+      render: (_m, indeks) => <NomorUrut nomor={indeks + 1} />,
+    },
     {
       judul: 'Kode',
       render: (m) => (

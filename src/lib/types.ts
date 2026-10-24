@@ -64,6 +64,7 @@ export interface Laporan {
   tanggal: string | null
   waktu: string | null
   dosen_hadir: boolean
+  reschedule: boolean
   catatan: string | null
   dokumentasi_url: string | null
   status: StatusLaporan

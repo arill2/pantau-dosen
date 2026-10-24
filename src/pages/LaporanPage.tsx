@@ -1,16 +1,18 @@
 import { useMemo, useState } from 'react'
-import { Check, ExternalLink, Eye, Pencil, X } from 'lucide-react'
+import { Check, CheckCheck, ExternalLink, Eye, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Select, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { StateBlock, TableSkeleton, InlineError } from '@/components/ui/Feedback'
 import { Toolbar } from '@/components/Toolbar'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { UbahLaporanDialog } from '@/components/UbahLaporanDialog'
 import { useToast } from '@/components/ui/Toast'
 import { useKelas } from '@/hooks/useMasterData'
 import {
   useLaporan,
   useTerapkanLaporan,
+  useTerapkanSemuaLaporan,
   useTolakLaporan,
 } from '@/lib/laporan'
 import { formatTanggal, namaMetode } from '@/lib/format'
@@ -39,7 +41,21 @@ function StatusPill({ status }: { status: StatusLaporan }) {
   )
 }
 
-function HadirPill({ hadir }: { hadir: boolean }) {
+function HadirPill({
+  hadir,
+  reschedule,
+}: {
+  hadir: boolean
+  reschedule: boolean
+}) {
+  if (reschedule) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-izin-soft px-2.5 py-0.5 text-[12px] font-semibold text-izin">
+        <span aria-hidden="true">↺</span>
+        Reschedule
+      </span>
+    )
+  }
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-semibold ${
@@ -56,6 +72,7 @@ export function LaporanPage() {
   const query = useLaporan()
   const { data: kelas = [] } = useKelas()
   const terapkan = useTerapkanLaporan()
+  const terapkanSemua = useTerapkanSemuaLaporan()
   const tolak = useTolakLaporan()
   const { tampil } = useToast()
 
@@ -67,6 +84,8 @@ export function LaporanPage() {
   const [akanTolak, setAkanTolak] = useState<Laporan | null>(null)
   const [alasan, setAlasan] = useState('')
   const [galat, setGalat] = useState<string | null>(null)
+  const [konfirmasiTerimaSemua, setKonfirmasiTerimaSemua] = useState(false)
+  const [galatTerimaSemua, setGalatTerimaSemua] = useState<string | null>(null)
 
   const semua = query.data ?? LAPORAN_KOSONG
   const tersaring = useMemo(() => {
@@ -87,6 +106,18 @@ export function LaporanPage() {
     })
   }, [semua, kelasId, status, cari])
 
+  // Hanya laporan baru yang tampil di filter aktif dan siap masuk rekap.
+  const siapTerima = useMemo(
+    () =>
+      tersaring.filter(
+        (l) =>
+          l.status === 'baru' &&
+          l.penugasan_id !== null &&
+          l.minggu_ke !== null,
+      ),
+    [tersaring],
+  )
+
   const ringkas = useMemo(
     () => ({
       total: semua.length,
@@ -106,6 +137,19 @@ export function LaporanPage() {
     } catch (err) {
       const pesan = pesanError(err)
       setGalat(pesan)
+      tampil(pesan, 'galat')
+    }
+  }
+
+  async function terimaSemua() {
+    setGalatTerimaSemua(null)
+    try {
+      const jumlah = await terapkanSemua.mutateAsync(siapTerima)
+      tampil(`${jumlah} laporan diterima dan masuk ke rekap.`, 'sukses')
+      setKonfirmasiTerimaSemua(false)
+    } catch (err) {
+      const pesan = pesanError(err)
+      setGalatTerimaSemua(pesan)
       tampil(pesan, 'galat')
     }
   }
@@ -167,12 +211,30 @@ export function LaporanPage() {
       </Toolbar>
 
       {ringkas.baru > 0 ? (
-        <div className="flex items-start gap-2.5 rounded-[10px] border border-izin bg-izin-soft px-4 py-3 text-[13px]">
-          <span aria-hidden="true" className="text-izin">⚠</span>
-          <p className="text-ink">
-            <strong>{ringkas.baru} laporan</strong> menunggu verifikasi. Data ini{' '}
-            <strong>belum masuk rekap</strong> sampai Anda menerimanya.
-          </p>
+        <div className="flex flex-col gap-2.5 rounded-[10px] border border-izin bg-izin-soft px-4 py-3 text-[13px] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5">
+            <span aria-hidden="true" className="text-izin">⚠</span>
+            <p className="text-ink">
+              <strong>{ringkas.baru} laporan</strong> menunggu verifikasi.{' '}
+              {siapTerima.length < ringkas.baru
+                ? `${siapTerima.length} di antaranya siap diterima sekaligus. `
+                : null}
+              Data ini <strong>belum masuk rekap</strong> sampai Anda menerimanya.
+            </p>
+          </div>
+          {siapTerima.length > 0 ? (
+            <Button
+              variasi="utama"
+              onClick={() => {
+                setGalatTerimaSemua(null)
+                setKonfirmasiTerimaSemua(true)
+              }}
+              ikon={<CheckCheck className="size-4" />}
+              className="w-full shrink-0 sm:w-auto"
+            >
+              Terima semua ({siapTerima.length})
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -209,12 +271,16 @@ export function LaporanPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tersaring.map((l) => (
+                  {tersaring.map((l, indeks) => (
                     <tr key={l.id} className="row-stripe border-t border-line">
                       <td className="tnum px-3 py-2.5 whitespace-nowrap text-muted">
                         {new Date(l.dibuat_pada).toLocaleString('id-ID')}
                       </td>
-                      <td className="px-3 py-2.5 font-semibold text-ink">{l.nama_ketua}</td>
+                      <td className="px-3 py-2.5 font-semibold text-ink">
+                        <DenganNomorUrut nomor={indeks + 1}>
+                          {l.nama_ketua}
+                        </DenganNomorUrut>
+                      </td>
                       <td className="px-3 py-2.5 text-ink">{l.kelas?.nama ?? '–'}</td>
                       <td className="px-3 py-2.5">
                         <span className="block max-w-48 truncate text-ink">{l.mata_kuliah ?? '–'}</span>
@@ -229,7 +295,7 @@ export function LaporanPage() {
                         {l.waktu ? <span className="text-muted"> {l.waktu.slice(0, 5)}</span> : null}
                       </td>
                       <td className="px-3 py-2.5">
-                        <HadirPill hadir={l.dosen_hadir} />
+                        <HadirPill hadir={l.dosen_hadir} reschedule={l.reschedule} />
                       </td>
                       <td className="px-3 py-2.5">
                         <StatusPill status={l.status} />
@@ -296,11 +362,15 @@ export function LaporanPage() {
           </div>
 
           <div className="flex flex-col gap-3 lg:hidden">
-            {tersaring.map((l) => (
+            {tersaring.map((l, indeks) => (
               <article key={l.id} className="rounded-[10px] border border-line bg-surface p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate font-bold text-ink">{l.nama_ketua}</h3>
+                    <h3 className="truncate font-bold text-ink">
+                      <DenganNomorUrut nomor={indeks + 1}>
+                        <span className="min-w-0 truncate">{l.nama_ketua}</span>
+                      </DenganNomorUrut>
+                    </h3>
                     <p className="truncate text-[13px] text-muted">{l.kelas?.nama ?? '–'}</p>
                   </div>
                   <StatusPill status={l.status} />
@@ -308,7 +378,7 @@ export function LaporanPage() {
                 <p className="mt-2 text-[13px] text-ink">{l.mata_kuliah ?? '–'}</p>
                 <p className="text-[12px] text-muted">{l.nama_dosen ?? '–'}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <HadirPill hadir={l.dosen_hadir} />
+                  <HadirPill hadir={l.dosen_hadir} reschedule={l.reschedule} />
                   <span className="tnum text-[12px] text-muted">
                     Pekan {l.minggu_ke ?? '–'} · {formatTanggal(l.tanggal)}
                   </span>
@@ -437,7 +507,13 @@ export function LaporanPage() {
             <Baris label="Waktu" nilai={detail.waktu ? detail.waktu.slice(0, 5) : '–'} />
             <Baris
               label="Status dosen"
-              nilai={detail.dosen_hadir ? 'Dosen hadir' : 'Dosen tidak hadir'}
+              nilai={
+                detail.reschedule
+                  ? 'Reschedule'
+                  : detail.dosen_hadir
+                    ? 'Dosen hadir'
+                    : 'Dosen tidak hadir'
+              }
             />
             <Baris label="Status laporan" nilai={STATUS_LABEL[detail.status]} />
             {detail.diverifikasi_pada ? (
@@ -467,11 +543,78 @@ export function LaporanPage() {
             ) : null}
             <p className="rounded-[6px] bg-surface-2 px-3 py-2 text-[12px] text-muted">
               "Terima" menandai pekan {detail.minggu_ke ?? '–'} sebagai{' '}
-              {detail.dosen_hadir ? 'Hadir' : 'Tidak hadir'} pada data dosen dan mengubah
+              {detail.reschedule
+                ? 'Pengganti (reschedule)'
+                : detail.dosen_hadir
+                  ? 'Hadir'
+                  : 'Tidak hadir'}{' '}
+              pada data dosen dan mengubah
               status laporan menjadi Terverifikasi. "Tolak" tidak mengubah rekap.
             </p>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        terbuka={konfirmasiTerimaSemua}
+        judul="Terima semua laporan?"
+        deskripsi={`${siapTerima.length} laporan baru akan diverifikasi sekaligus`}
+        onTutup={() => {
+          if (terapkanSemua.isPending) return
+          setKonfirmasiTerimaSemua(false)
+        }}
+        footer={
+          <>
+            <Button
+              variasi="halus"
+              onClick={() => setKonfirmasiTerimaSemua(false)}
+              className="sm:mr-auto"
+              disabled={terapkanSemua.isPending}
+            >
+              Batal
+            </Button>
+            <Button
+              variasi="utama"
+              memuat={terapkanSemua.isPending}
+              onClick={() => void terimaSemua()}
+              ikon={<CheckCheck className="size-4" />}
+            >
+              Terima {siapTerima.length} laporan
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3 text-[13px]">
+          {galatTerimaSemua ? <InlineError pesan={galatTerimaSemua} /> : null}
+          <p className="text-ink">
+            Semua laporan berstatus <strong>Baru</strong> yang sedang tampil akan
+            ditandai <strong>Terverifikasi</strong> dan status pekannya langsung
+            dimasukkan ke rekap kehadiran dosen.
+          </p>
+          <p className="text-muted">
+            Filter kelas dan status saat ini menentukan laporan yang diterima.
+            Pekan yang sudah punya status akan ditimpa oleh laporan ini. Periksa
+            daftar berikut sebelum melanjutkan.
+          </p>
+          <ul className="max-h-56 divide-y divide-[var(--line)] overflow-y-auto rounded-[6px] border border-line">
+            {siapTerima.map((l) => (
+              <li key={l.id} className="px-3 py-2">
+                <p className="font-semibold text-ink">
+                  {l.nama_dosen ?? l.mata_kuliah ?? 'Laporan'}
+                </p>
+                <p className="text-[12px] text-muted">
+                  {l.nama_ketua} · {l.kelas?.nama ?? '–'} · Pekan{' '}
+                  {l.minggu_ke ?? '–'} ·{' '}
+                  {l.reschedule
+                    ? 'Reschedule'
+                    : l.dosen_hadir
+                      ? 'Hadir'
+                      : 'Tidak hadir'}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
       </Modal>
 
       <Modal

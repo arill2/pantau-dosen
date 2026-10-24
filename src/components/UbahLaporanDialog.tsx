@@ -27,7 +27,7 @@ export function UbahLaporanDialog({ laporan, onTutup }: Props) {
   const [minggu, setMinggu] = useState('')
   const [tanggal, setTanggal] = useState('')
   const [waktu, setWaktu] = useState('')
-  const [hadir, setHadir] = useState<'hadir' | 'tidak'>('hadir')
+  const [hadir, setHadir] = useState<'hadir' | 'tidak' | 'reschedule'>('hadir')
   const [catatan, setCatatan] = useState('')
   const [dokumentasi, setDokumentasi] = useState('')
   const [galat, setGalat] = useState<string | null>(null)
@@ -39,7 +39,9 @@ export function UbahLaporanDialog({ laporan, onTutup }: Props) {
     setMinggu(laporan.minggu_ke ? String(laporan.minggu_ke) : '')
     setTanggal(laporan.tanggal ?? '')
     setWaktu(laporan.waktu ? laporan.waktu.slice(0, 5) : '')
-    setHadir(laporan.dosen_hadir ? 'hadir' : 'tidak')
+    setHadir(
+      laporan.reschedule ? 'reschedule' : laporan.dosen_hadir ? 'hadir' : 'tidak',
+    )
     setCatatan(laporan.catatan ?? '')
     setDokumentasi(laporan.dokumentasi_url ?? '')
     setGalat(null)
@@ -79,6 +81,7 @@ export function UbahLaporanDialog({ laporan, onTutup }: Props) {
         tanggal,
         waktu,
         dosenHadir: hadir === 'hadir',
+        reschedule: hadir === 'reschedule',
         catatan,
         dokumentasi,
       })
@@ -155,6 +158,7 @@ export function UbahLaporanDialog({ laporan, onTutup }: Props) {
                 {MINGGU.map((m) => (
                   <option key={m} value={m}>
                     Pekan {m}
+                    {m === 8 ? ' (UTS)' : m === 16 ? ' (UAS)' : ''}
                   </option>
                 ))}
               </Select>
@@ -186,11 +190,12 @@ export function UbahLaporanDialog({ laporan, onTutup }: Props) {
           <legend className="mb-2 text-[13px] font-semibold text-ink">
             Kehadiran dosen
           </legend>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {(
               [
                 ['hadir', 'Dosen hadir', 'bg-hadir-soft text-hadir border-hadir'],
                 ['tidak', 'Dosen tidak hadir', 'bg-alfa-soft text-alfa border-alfa'],
+                ['reschedule', 'Reschedule', 'bg-izin-soft text-izin border-izin'],
               ] as const
             ).map(([nilai, label, kelasAktif]) => {
               const aktif = hadir === nilai

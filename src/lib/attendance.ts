@@ -129,45 +129,91 @@ export function ringkasRekap(
   }
 }
 
-/** Bulan (0-11) yang memiliki minimal satu pertemuan bertanggal. */
-export function daftarBulanAktif(list: PenugasanLengkap[]): number[] {
-  const set = new Set<number>()
-  for (const item of list) {
-    for (const p of item.pertemuan) {
-      const b = bulanDariTanggal(p.tanggal)
-      if (b !== null) set.add(b)
+// ---------------------------------------------------------------------------
+// Rekap per tanggal
+// ---------------------------------------------------------------------------
+export interface BarisTanggal {
+  penugasan: PenugasanLengkap
+  pertemuan: Pertemuan
+}
+
+/** Apakah pertemuan jatuh pada tanggal ISO (yyyy-mm-dd) tertentu. */
+export function cocokTanggal(pertemuan: Pertemuan, tanggal: string): boolean {
+  return tanggal !== '' && pertemuan.tanggal === tanggal
+}
+
+/** Semua pertemuan pada tanggal tertentu, beserta penugasan induknya. */
+export function daftarPertemuanTanggal(
+  list: PenugasanLengkap[],
+  tanggal: string,
+): BarisTanggal[] {
+  if (!tanggal) return []
+  return list.flatMap((penugasan) =>
+    penugasan.pertemuan
+      .filter((p) => cocokTanggal(p, tanggal))
+      .map((pertemuan) => ({ penugasan, pertemuan })),
+  )
+}
+
+export interface RingkasanTanggal {
+  jumlahPertemuan: number
+  jumlahDosen: number
+  hadir: number
+  tidakHadir: number
+  izin: number
+  pengganti: number
+  belum: number
+  /** Persentase hadir dari pertemuan yang sudah dicatat (selain "belum"). */
+  persentaseHadir: number | null
+}
+
+export function ringkasTanggal(
+  baris: BarisTanggal[],
+  hitungIzinSebagaiHadir = false,
+): RingkasanTanggal {
+  const dosen = new Set<string>()
+  let hadir = 0
+  let hadirEfektif = 0
+  let tidakHadir = 0
+  let izin = 0
+  let pengganti = 0
+  let belum = 0
+
+  for (const { penugasan, pertemuan } of baris) {
+    if (penugasan.dosen?.id) dosen.add(penugasan.dosen.id)
+    switch (pertemuan.status) {
+      case 'hadir':
+        hadir += 1
+        hadirEfektif += 1
+        break
+      case 'tidak_hadir':
+        tidakHadir += 1
+        break
+      case 'izin':
+        izin += 1
+        if (hitungIzinSebagaiHadir) hadirEfektif += 1
+        break
+      case 'pengganti':
+        pengganti += 1
+        if (hitungIzinSebagaiHadir) hadirEfektif += 1
+        break
+      default:
+        belum += 1
     }
   }
-  return [...set].sort((a, b) => a - b)
-}
 
-export interface RekapBulan {
-  bulan: number
-  totalHadir: number
-  totalDihitung: number
-  persentase: number | null
-  /** Ada pertemuan bertanggal pada bulan ini. */
-  adaData: boolean
-}
-
-/** Rincian persentase & total untuk tiap bulan pada satu penugasan. */
-export function hitungPerBulan(
-  penugasan: PenugasanLengkap,
-  bulanList: number[],
-  aturan: AturanHitung,
-): RekapBulan[] {
-  return bulanList.map((bulan) => {
-    const r = hitungRekap(penugasan, bulan, aturan)
-    return {
-      bulan,
-      totalHadir: r.totalHadir,
-      totalDihitung: r.totalDihitung,
-      persentase: r.persentase,
-      adaData: penugasan.pertemuan.some(
-        (p) => bulanDariTanggal(p.tanggal) === bulan,
-      ),
-    }
-  })
+  const dihitung = hadir + tidakHadir + izin + pengganti
+  return {
+    jumlahPertemuan: baris.length,
+    jumlahDosen: dosen.size,
+    hadir,
+    tidakHadir,
+    izin,
+    pengganti,
+    belum,
+    persentaseHadir:
+      dihitung > 0 ? Math.round((hadirEfektif / dihitung) * 1000) / 10 : null,
+  }
 }
 
 // ---------------------------------------------------------------------------

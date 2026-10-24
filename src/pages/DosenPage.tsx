@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Confirm } from '@/components/ui/Confirm'
 import { InlineError } from '@/components/ui/Feedback'
 import { MasterTable, type Kolom } from '@/components/MasterTable'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { Toolbar } from '@/components/Toolbar'
 import { useToast } from '@/components/ui/Toast'
 import { StatusAktif } from '@/components/StatusAktif'
@@ -43,7 +44,11 @@ export function DosenPage() {
     {
       judul: 'Nama dosen',
       utama: true,
-      render: (d) => <span className="font-semibold text-ink">{d.nama}</span>,
+      render: (d, indeks) => (
+        <DenganNomorUrut nomor={indeks + 1}>
+          <span className="font-semibold text-ink">{d.nama}</span>
+        </DenganNomorUrut>
+      ),
     },
     {
       judul: 'Kode',

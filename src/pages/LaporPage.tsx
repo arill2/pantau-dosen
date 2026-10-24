@@ -32,7 +32,7 @@ interface Nilai {
   minggu: string
   tanggal: string
   waktu: string
-  hadir: 'hadir' | 'tidak' | ''
+  hadir: 'hadir' | 'tidak' | 'reschedule' | ''
   catatan: string
   dokumentasi: string
 }
@@ -165,7 +165,8 @@ export function LaporPage() {
     if (!form.penugasanId) return setGalatForm('Pilih mata kuliah.')
     if (!form.minggu) return setGalatForm('Pilih minggu pertemuan.')
     if (!form.tanggal) return setGalatForm('Isi tanggal jadwal pembelajaran.')
-    if (!form.hadir) return setGalatForm('Pilih apakah dosen hadir atau tidak.')
+    if (!form.hadir)
+      return setGalatForm('Pilih kehadiran dosen: hadir, tidak hadir, atau reschedule.')
     if (pekanSudahDilaporkan)
       return setGalatForm(
         'Pekan ini sudah pernah dilaporkan untuk mata kuliah ini. Pilih pekan lain.',
@@ -181,6 +182,7 @@ export function LaporPage() {
         tanggal: form.tanggal,
         waktu: form.waktu,
         dosenHadir: form.hadir === 'hadir',
+        reschedule: form.hadir === 'reschedule',
         catatan: form.catatan,
         dokumentasi: form.dokumentasi,
       })
@@ -405,6 +407,7 @@ export function LaporPage() {
                         {MINGGU.map((m) => (
                           <option key={m} value={m} disabled={pekanTerisi.includes(m)}>
                             Pekan {m}
+                            {m === 8 ? ' (UTS)' : m === 16 ? ' (UAS)' : ''}
                             {pekanTerisi.includes(m) ? ' · sudah dilaporkan' : ''}
                           </option>
                         ))}
@@ -448,11 +451,12 @@ export function LaporPage() {
                   <legend className="sr-only">
                     Apakah dosen hadir melaksanakan pembelajaran?
                   </legend>
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                     {(
                       [
                         ['hadir', 'Dosen hadir', '✓', 'border-hadir bg-hadir-soft text-hadir'],
                         ['tidak', 'Dosen tidak hadir', '✕', 'border-alfa bg-alfa-soft text-alfa'],
+                        ['reschedule', 'Reschedule', '↺', 'border-izin bg-izin-soft text-izin'],
                       ] as const
                     ).map(([nilai, label, tanda, aktifKelas]) => {
                       const aktif = form.hadir === nilai

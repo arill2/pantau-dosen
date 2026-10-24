@@ -8,11 +8,11 @@ import { useToast } from '@/components/ui/Toast'
 import { useSimpanPertemuan } from '@/hooks/useRekap'
 import { pesanError } from '@/lib/api'
 import { formatTanggal } from '@/lib/format'
-import type { RekapBaris, StatusPertemuan } from '@/lib/types'
+import type { PenugasanLengkap, StatusPertemuan } from '@/lib/types'
 
 interface Props {
   terbuka: boolean
-  baris: RekapBaris | null
+  baris: PenugasanLengkap | null
   minggu: number | null
   onTutup: () => void
 }
@@ -122,7 +122,7 @@ export function PertemuanDialog({ terbuka, baris, minggu, onTutup }: Props) {
 
         <Field
           label="Tanggal pelaksanaan"
-          petunjuk="Menentukan bulan untuk filter rekap."
+          petunjuk="Menentukan filter bulan dan daftar pertemuan per tanggal."
           opsional
         >
           {(p) => (

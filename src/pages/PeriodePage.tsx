@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Confirm } from '@/components/ui/Confirm'
 import { InlineError } from '@/components/ui/Feedback'
 import { MasterTable, type Kolom } from '@/components/MasterTable'
+import { DenganNomorUrut } from '@/components/NomorUrut'
 import { Toolbar } from '@/components/Toolbar'
 import { StatusAktif } from '@/components/StatusAktif'
 import { useToast } from '@/components/ui/Toast'
@@ -51,7 +52,11 @@ export function PeriodePage() {
     {
       judul: 'Periode',
       utama: true,
-      render: (p) => <span className="font-semibold text-ink">{p.nama}</span>,
+      render: (p, indeks) => (
+        <DenganNomorUrut nomor={indeks + 1}>
+          <span className="font-semibold text-ink">{p.nama}</span>
+        </DenganNomorUrut>
+      ),
     },
     {
       judul: 'Tanggal mulai',

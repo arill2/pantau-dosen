@@ -58,6 +58,7 @@ export interface InputLapor {
   tanggal: string
   waktu: string
   dosenHadir: boolean
+  reschedule: boolean
   catatan: string
   dokumentasi: string
 }
@@ -71,6 +72,7 @@ export async function laporKirimKelas(input: InputLapor): Promise<void> {
     p_tanggal: input.tanggal,
     p_waktu: input.waktu || null,
     p_dosen_hadir: input.dosenHadir,
+    p_reschedule: input.reschedule,
     p_catatan: input.catatan || null,
     p_dokumentasi: input.dokumentasi || null,
   })
@@ -82,7 +84,7 @@ export async function laporKirimKelas(input: InputLapor): Promise<void> {
 // ---------------------------------------------------------------------------
 const SELECT_LAPORAN = `
   id, kelas_id, penugasan_id, nama_ketua, mata_kuliah, nama_dosen, tipe,
-  minggu_ke, tanggal, waktu, dosen_hadir, catatan, dokumentasi_url, status,
+  minggu_ke, tanggal, waktu, dosen_hadir, reschedule, catatan, dokumentasi_url, status,
   catatan_verifikasi, diverifikasi_oleh, diverifikasi_pada, dibuat_pada,
   kelas:kelas_id ( id, nama, program, semester, paralel, angkatan )
 `
@@ -117,6 +119,7 @@ export interface InputUbahLaporan {
   tanggal: string
   waktu: string
   dosenHadir: boolean
+  reschedule: boolean
   catatan: string
   dokumentasi: string
 }
@@ -135,6 +138,7 @@ export function useUbahLaporan() {
         p_tanggal: input.tanggal,
         p_waktu: input.waktu || null,
         p_dosen_hadir: input.dosenHadir,
+        p_reschedule: input.reschedule,
         p_catatan: input.catatan || null,
         p_dokumentasi: input.dokumentasi || null,
       })
@@ -165,39 +169,87 @@ export function useTolakLaporan() {
   })
 }
 
-/** Admin menerima laporan: tulis ke rekap pertemuan + tandai terverifikasi. */
+/**
+ * Terapkan satu atau banyak laporan sekaligus: tulis ke rekap pertemuan lalu
+ * tandai terverifikasi. Dipakai tombol "Terima" dan "Terima semua".
+ */
+async function terapkanKeRekap(daftar: Laporan[]): Promise<number> {
+  pastikanSiap()
+  const siap = daftar.filter(
+    (l): l is Laporan & { penugasan_id: string; minggu_ke: number } =>
+      l.status === 'baru' && l.penugasan_id !== null && l.minggu_ke !== null,
+  )
+  if (siap.length === 0) {
+    throw new Error('Tidak ada laporan baru yang bisa diterima.')
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const waktu = new Date().toISOString()
+
+  // Satu penugasan + pekan hanya boleh menghasilkan satu baris pertemuan,
+  // meskipun ada laporan ganda yang lolos.
+  const unik = new Map<string, (typeof siap)[number]>()
+  for (const l of siap) unik.set(`${l.penugasan_id}:${l.minggu_ke}`, l)
+
+  const barisPertemuan = [...unik.values()].map((l) => ({
+    penugasan_id: l.penugasan_id,
+    minggu_ke: l.minggu_ke,
+    tanggal: l.tanggal,
+    status: l.reschedule
+      ? 'pengganti'
+      : l.dosen_hadir
+        ? 'hadir'
+        : 'tidak_hadir',
+    catatan: l.catatan,
+    updated_at: waktu,
+  }))
+
+  // PostgREST punya batas panjang URL/permintaan; kirim bertahap untuk data besar.
+  const UKURAN = 100
+  for (let i = 0; i < barisPertemuan.length; i += UKURAN) {
+    const hasil = await supabase
+      .from('pertemuan')
+      .upsert(barisPertemuan.slice(i, i + UKURAN), {
+        onConflict: 'penugasan_id,minggu_ke',
+      })
+    if (hasil.error) buka(hasil)
+  }
+
+  const id = siap.map((l) => l.id)
+  for (let i = 0; i < id.length; i += UKURAN) {
+    const upd = await supabase
+      .from('laporan')
+      .update({
+        status: 'terverifikasi',
+        diverifikasi_oleh: user?.id ?? null,
+        diverifikasi_pada: waktu,
+      })
+      .in('id', id.slice(i, i + UKURAN))
+    if (upd.error) buka(upd)
+  }
+
+  return siap.length
+}
+
+/** Admin menerima satu laporan: tulis ke rekap pertemuan + tandai terverifikasi. */
 export function useTerapkanLaporan() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (laporan: Laporan) => {
-      pastikanSiap()
-      if (!laporan.penugasan_id || laporan.minggu_ke === null)
-        throw new Error('Laporan ini tidak memiliki penugasan/pekan.')
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      const hasil = await supabase.from('pertemuan').upsert(
-        {
-          penugasan_id: laporan.penugasan_id,
-          minggu_ke: laporan.minggu_ke,
-          tanggal: laporan.tanggal,
-          status: laporan.dosen_hadir ? 'hadir' : 'tidak_hadir',
-          catatan: laporan.catatan,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'penugasan_id,minggu_ke' },
-      )
-      if (hasil.error) buka(hasil)
-      const upd = await supabase
-        .from('laporan')
-        .update({
-          status: 'terverifikasi',
-          diverifikasi_oleh: user?.id ?? null,
-          diverifikasi_pada: new Date().toISOString(),
-        })
-        .eq('id', laporan.id)
-      if (upd.error) buka(upd)
+    mutationFn: (laporan: Laporan) => terapkanKeRekap([laporan]),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KUNCI_QUERY.laporan })
+      void qc.invalidateQueries({ queryKey: KUNCI_QUERY.rekap })
     },
+  })
+}
+
+/** Admin menerima semua laporan baru yang dipilih sekaligus. */
+export function useTerapkanSemuaLaporan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (daftar: Laporan[]) => terapkanKeRekap(daftar),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: KUNCI_QUERY.laporan })
       void qc.invalidateQueries({ queryKey: KUNCI_QUERY.rekap })
